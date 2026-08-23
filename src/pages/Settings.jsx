@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Settings2, Bell, Shield, CreditCard, RefreshCw } from 'lucide-react'
+import { Settings2, Bell, Shield, RefreshCw } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { Input, Textarea } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 
@@ -41,12 +40,6 @@ function Section({ icon: Icon, title, children }) {
 
 export default function Settings() {
   const { settings, updateSettings } = useStore()
-  const [saved, setSaved] = useState(false)
-
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
 
   return (
     <div className="p-4 lg:p-6 max-w-2xl mx-auto">
@@ -84,43 +77,6 @@ export default function Settings() {
         </div>
       </Section>
 
-      {/* Billing defaults */}
-      <Section icon={CreditCard} title="Padrões de Cobrança">
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Taxa de juros padrão (% ao dia)</label>
-              <input
-                type="number"
-                step="0.1"
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={settings.default_interest_rate}
-                onChange={(e) => updateSettings({ default_interest_rate: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Validade padrão (dias)</label>
-              <input
-                type="number"
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={settings.default_payment_validity}
-                onChange={(e) => updateSettings({ default_payment_validity: parseInt(e.target.value) || 3 })}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 block">Mensagem padrão de cobrança</label>
-            <p className="text-xs text-slate-400 mb-1">Variáveis: {'{nome}'}, {'{valor}'}, {'{data}'}, {'{juros}'}, {'{link}'}</p>
-            <textarea
-              rows={3}
-              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              value={settings.default_payment_message}
-              onChange={(e) => updateSettings({ default_payment_message: e.target.value })}
-            />
-          </div>
-        </div>
-      </Section>
-
       {/* Notifications */}
       <Section icon={Bell} title="Notificações">
         <div className="divide-y divide-slate-50">
@@ -128,7 +84,7 @@ export default function Settings() {
             checked={settings.notifications_enabled}
             onChange={(v) => updateSettings({ notifications_enabled: v })}
             label="Notificações ativas"
-            desc="Receber alertas de vencimentos e pagamentos"
+            desc="Receber alertas de orçamentos e saldo"
           />
         </div>
       </Section>
@@ -156,8 +112,7 @@ export default function Settings() {
       {/* About */}
       <div className="text-center py-6 text-slate-400 text-xs">
         <p className="font-semibold text-slate-500 mb-1">Finance Time v1.0</p>
-        <p>Plataforma de gestão financeira integrada</p>
-        <p className="mt-1">com IA e automação de cobranças</p>
+        <p>Plataforma de gestão financeira com IA e Open Finance</p>
       </div>
     </div>
   )

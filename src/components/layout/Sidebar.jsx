@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, ArrowLeftRight, Wallet, PiggyBank, Users,
-  Link2, CalendarClock, Landmark, Sparkles, BarChart3, Settings,
+  LayoutDashboard, ArrowLeftRight, Wallet, PiggyBank,
+  Landmark, Sparkles, BarChart3, Settings,
   ChevronLeft, ChevronRight, TrendingUp
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -12,9 +12,6 @@ const NAV_ITEMS = [
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
   { to: '/accounts', icon: Wallet, label: 'Contas' },
   { to: '/budgets', icon: PiggyBank, label: 'Orçamentos' },
-  { to: '/patients', icon: Users, label: 'Pacientes' },
-  { to: '/payment-links', icon: Link2, label: 'Links de Pag.' },
-  { to: '/scheduled', icon: CalendarClock, label: 'Agendamentos' },
   { to: '/open-finance', icon: Landmark, label: 'Open Finance' },
   { to: '/ai-insights', icon: Sparkles, label: 'IA & Insights' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },

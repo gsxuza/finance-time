@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrendingUp, Wallet, Settings, CheckCircle2, ArrowRight } from 'lucide-react'
+import { TrendingUp, Wallet, CheckCircle2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { useStore } from '@/store/useStore'
@@ -8,7 +8,7 @@ const STEPS = [
   {
     icon: TrendingUp,
     title: 'Bem-vindo ao Finance Time!',
-    desc: 'Sua plataforma completa de gestão financeira com IA, automação de cobranças e Open Finance.',
+    desc: 'Sua plataforma de gestão financeira com IA e Open Finance integrado.',
     gradient: 'from-blue-500 to-violet-500',
   },
   {
@@ -16,12 +16,6 @@ const STEPS = [
     title: 'Crie sua primeira conta',
     desc: 'Comece adicionando uma conta bancária para registrar suas transações.',
     gradient: 'from-emerald-400 to-teal-500',
-  },
-  {
-    icon: Settings,
-    title: 'Configure seus padrões',
-    desc: 'Defina a taxa de juros e validade padrão para links de pagamento.',
-    gradient: 'from-amber-400 to-orange-500',
   },
   {
     icon: CheckCircle2,
@@ -36,8 +30,6 @@ export function Onboarding() {
   const [accountName, setAccountName] = useState('Conta Corrente')
   const [accountType, setAccountType] = useState('checking')
   const [balance, setBalance] = useState('')
-  const [interestRate, setInterestRate] = useState('3.3')
-  const [validity, setValidity] = useState('3')
   const { addAccount, updateSettings } = useStore()
 
   const current = STEPS[step]
@@ -46,9 +38,6 @@ export function Onboarding() {
   const handleNext = () => {
     if (step === 1 && accountName) {
       addAccount({ name: accountName, type: accountType, balance: parseFloat(balance) || 0, color: '#3b82f6', icon: '🏦', is_active: true })
-    }
-    if (step === 2) {
-      updateSettings({ default_interest_rate: parseFloat(interestRate) || 3.3, default_payment_validity: parseInt(validity) || 3 })
     }
     if (step < STEPS.length - 1) {
       setStep(step + 1)
@@ -92,12 +81,6 @@ export function Onboarding() {
                 <option value="credit_card">Cartão de Crédito</option>
               </Select>
               <Input label="Saldo inicial (R$)" type="number" placeholder="0,00" value={balance} onChange={(e) => setBalance(e.target.value)} />
-            </div>
-          )}
-          {step === 2 && (
-            <div className="flex flex-col gap-3 mt-4">
-              <Input label="Taxa de juros padrão (% ao dia)" type="number" step="0.1" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} />
-              <Input label="Validade padrão do link (dias)" type="number" value={validity} onChange={(e) => setValidity(e.target.value)} />
             </div>
           )}
         </div>

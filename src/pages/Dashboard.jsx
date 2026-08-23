@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { TrendingUp, TrendingDown, Plus, Link2, ArrowUpRight, ArrowDownRight, Sparkles, Wallet } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, ArrowUpRight, ArrowDownRight, Sparkles, Wallet } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, formatDateShort, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -96,8 +96,8 @@ export default function Dashboard() {
           <button onClick={() => navigate('/transactions')} className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer">
             <Plus size={14} /> Nova Transação
           </button>
-          <button onClick={() => navigate('/payment-links')} className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer">
-            <Link2 size={14} /> Criar Link
+          <button onClick={() => navigate('/reports')} className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer">
+            <ArrowUpRight size={14} /> Ver Relatórios
           </button>
         </div>
       </div>

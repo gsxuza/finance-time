@@ -1,22 +1,19 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, ArrowLeftRight, Users, Link2, MoreHorizontal,
-  Wallet, PiggyBank, CalendarClock, Landmark, Sparkles, BarChart3, Settings, X, TrendingUp
+  LayoutDashboard, ArrowLeftRight, MoreHorizontal,
+  Wallet, PiggyBank, Landmark, Sparkles, BarChart3, Settings, X, TrendingUp
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const MAIN_NAV = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
-  { to: '/patients', icon: Users, label: 'Pacientes' },
-  { to: '/payment-links', icon: Link2, label: 'Links' },
+  { to: '/accounts', icon: Wallet, label: 'Contas' },
+  { to: '/budgets', icon: PiggyBank, label: 'Orçamentos' },
 ]
 
 const MORE_ITEMS = [
-  { to: '/accounts', icon: Wallet, label: 'Contas' },
-  { to: '/budgets', icon: PiggyBank, label: 'Orçamentos' },
-  { to: '/scheduled', icon: CalendarClock, label: 'Agendamentos' },
   { to: '/open-finance', icon: Landmark, label: 'Open Finance' },
   { to: '/ai-insights', icon: Sparkles, label: 'IA & Insights' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
