@@ -80,8 +80,8 @@ export const useStore = create(
       },
     }),
     {
-      name: 'finance-time-store',
-      version: 3,
+      name: 'finance-time-v4',
+      version: 1,
     }
   )
 )
