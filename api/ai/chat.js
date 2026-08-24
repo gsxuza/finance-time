@@ -5,9 +5,9 @@ export default async function handler(req) {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), { status: 500 })
+    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), { status: 500 })
   }
 
   let body
@@ -25,8 +25,7 @@ export default async function handler(req) {
   const { accounts = [], transactions = [], budgets = [] } = financialData
 
   const totalBalance = accounts.filter((a) => a.is_active).reduce((s, a) => s + (a.balance || 0), 0)
-  const now = new Date()
-  const thisMonth = now.toISOString().slice(0, 7)
+  const thisMonth = new Date().toISOString().slice(0, 7)
   const monthlyIncome = transactions.filter((t) => t.type === 'income' && t.date?.startsWith(thisMonth)).reduce((s, t) => s + t.amount, 0)
   const monthlyExpenses = transactions.filter((t) => t.type === 'expense' && t.date?.startsWith(thisMonth)).reduce((s, t) => s + t.amount, 0)
 
@@ -81,33 +80,35 @@ INSTRUÇÕES:
 - Se não há dados suficientes para responder, diga isso claramente
 - Mantenha respostas concisas (máximo 3-4 parágrafos)`
 
-  const messages = [
-    ...history.map((h) => ({ role: h.role, content: h.content })),
-    { role: 'user', content: message },
+  // Gemini uses "model" for assistant role
+  const contents = [
+    ...history.map((h) => ({
+      role: h.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: h.content }],
+    })),
+    { role: 'user', parts: [{ text: message }] },
   ]
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages,
-      }),
-    })
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents,
+          generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
+        }),
+      }
+    )
 
     const data = await res.json()
     if (!res.ok) {
-      return new Response(JSON.stringify({ error: data.error?.message || 'Claude API error' }), { status: 500 })
+      return new Response(JSON.stringify({ error: data.error?.message || 'Gemini API error' }), { status: 500 })
     }
 
-    const reply = data.content?.[0]?.text || ''
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     return new Response(JSON.stringify({ reply }), {
       headers: { 'Content-Type': 'application/json' },
     })
