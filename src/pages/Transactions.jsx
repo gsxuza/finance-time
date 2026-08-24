@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { format, startOfWeek, startOfMonth, subMonths, isAfter } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, Search, Filter, Trash2, Edit2, Sparkles } from 'lucide-react'
+import { Plus, Search, Trash2, Edit2, Sparkles } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, formatDate, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge, StatusBadge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { Input, Select, Textarea } from '@/components/ui/Input'
+import { ImportCSVButton } from '@/components/ImportCSV'
 
 const PERIOD_OPTIONS = [
   { value: 'all', label: 'Todos' },
@@ -168,9 +169,12 @@ export default function Transactions() {
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-bold text-slate-900">Transações</h1>
-        <Button onClick={() => setModal('new')} size="sm">
-          <Plus size={16} /> Nova
-        </Button>
+        <div className="flex gap-2">
+          <ImportCSVButton />
+          <Button onClick={() => setModal('new')} size="sm">
+            <Plus size={16} /> Nova
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
