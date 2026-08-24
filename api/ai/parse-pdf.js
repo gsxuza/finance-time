@@ -89,12 +89,16 @@ Rules:
       return new Response(JSON.stringify({ error: data.error?.message || 'Gemini API error' }), { status: 500 })
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const candidate = data.candidates?.[0]
+    const text = candidate?.content?.parts?.[0]?.text || ''
+
+    if (!text) {
+      const reason = candidate?.finishReason || data.promptFeedback?.blockReason || 'sem resposta'
+      return new Response(JSON.stringify({ error: `Gemini não retornou texto (motivo: ${reason}). O PDF pode estar protegido ou corrompido.`, debug: JSON.stringify(data).slice(0, 500) }), { status: 422 })
+    }
 
     // Strip markdown fences and find JSON
     let clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-
-    // Try to extract JSON object if there's surrounding text
     const jsonMatch = clean.match(/\{[\s\S]*\}/)
     if (jsonMatch) clean = jsonMatch[0]
 
@@ -102,16 +106,13 @@ Rules:
     try {
       parsed = JSON.parse(clean)
     } catch {
-      // Last resort: try to find a transactions array directly
       const arrMatch = text.match(/\[[\s\S]*\]/)
       if (arrMatch) {
-        try {
-          parsed = { transactions: JSON.parse(arrMatch[0]) }
-        } catch {
-          return new Response(JSON.stringify({ error: 'Não foi possível interpretar o PDF. O arquivo pode ser escaneado (imagem) — tente exportar como PDF de texto ou use CSV.' }), { status: 422 })
-        }
-      } else {
-        return new Response(JSON.stringify({ error: 'Não foi possível interpretar o PDF. O arquivo pode ser escaneado (imagem) — tente exportar como PDF de texto ou use CSV.' }), { status: 422 })
+        try { parsed = { transactions: JSON.parse(arrMatch[0]) } }
+        catch { parsed = null }
+      }
+      if (!parsed) {
+        return new Response(JSON.stringify({ error: 'Gemini respondeu mas o formato não é JSON.', debug: text.slice(0, 300) }), { status: 422 })
       }
     }
 

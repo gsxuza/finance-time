@@ -211,7 +211,7 @@ function ImportCSVModal({ open, onClose }) {
           body: JSON.stringify({ pdfBase64: base64 }),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Erro ao processar PDF')
+        if (!res.ok) throw new Error((data.error || 'Erro ao processar PDF') + (data.debug ? ` | Debug: ${data.debug}` : ''))
         const withCategories = (data.transactions || []).map((t) => ({
           ...t,
           category: t.type === 'income' ? 'Outros Rendimentos' : autoCategory(t.description),
