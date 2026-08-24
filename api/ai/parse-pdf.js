@@ -22,21 +22,21 @@ export default async function handler(req) {
     return new Response(JSON.stringify({ error: 'pdfBase64 is required' }), { status: 400 })
   }
 
-  const prompt = `Extract all financial transactions from this bank statement PDF.
+  const prompt = `Look at this bank statement PDF and list every financial transaction you find.
 
-IMPORTANT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanations. Just the JSON.
+For each transaction output one line in this exact format:
+DATE|DESCRIPTION|AMOUNT|TYPE
 
-Required format:
-{"transactions":[{"date":"YYYY-MM-DD","description":"transaction description","amount":150.00,"type":"expense"}]}
+Where:
+- DATE is YYYY-MM-DD
+- DESCRIPTION is the transaction description
+- AMOUNT is a positive number (no currency symbol, use dot as decimal)
+- TYPE is either "expense" or "income"
 
-Rules:
-- date: ISO format YYYY-MM-DD only
-- amount: positive number, no sign
-- type: "expense" for debits/withdrawals/purchases, "income" for credits/deposits/salary
-- Include ALL transactions in the document
-- Skip balance lines, totals, headers
-- Default to "expense" when unclear
-- If the PDF has no readable text (scanned image), return {"transactions":[]}`
+Output ONLY the data lines, no headers, no explanations, no empty lines.
+Example:
+2024-01-15|Supermercado Extra|150.50|expense
+2024-01-16|Salário|3000.00|income`
 
   try {
     const res = await fetch(
@@ -47,78 +47,47 @@ Rules:
         body: JSON.stringify({
           contents: [{
             parts: [
-              {
-                inline_data: {
-                  mime_type: 'application/pdf',
-                  data: pdfBase64,
-                },
-              },
+              { inline_data: { mime_type: 'application/pdf', data: pdfBase64 } },
               { text: prompt },
             ],
           }],
-          generationConfig: {
-            maxOutputTokens: 4096,
-            temperature: 0,
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'object',
-              properties: {
-                transactions: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      date: { type: 'string' },
-                      description: { type: 'string' },
-                      amount: { type: 'number' },
-                      type: { type: 'string' },
-                    },
-                    required: ['date', 'description', 'amount', 'type'],
-                  },
-                },
-              },
-              required: ['transactions'],
-            },
-          },
+          generationConfig: { maxOutputTokens: 4096, temperature: 0 },
         }),
       }
     )
 
     const data = await res.json()
+
     if (!res.ok) {
       return new Response(JSON.stringify({ error: data.error?.message || 'Gemini API error' }), { status: 500 })
     }
 
-    const candidate = data.candidates?.[0]
-    const text = candidate?.content?.parts?.[0]?.text || ''
+    const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim()
 
     if (!text) {
-      const reason = candidate?.finishReason || data.promptFeedback?.blockReason || 'sem resposta'
-      return new Response(JSON.stringify({ error: `Gemini não retornou texto (motivo: ${reason}). O PDF pode estar protegido ou corrompido.`, debug: JSON.stringify(data).slice(0, 500) }), { status: 422 })
+      const reason = data.candidates?.[0]?.finishReason || data.promptFeedback?.blockReason || 'unknown'
+      return new Response(JSON.stringify({ error: `Gemini não conseguiu ler o PDF (${reason}). O arquivo pode estar protegido ou ser uma imagem escaneada.` }), { status: 422 })
     }
 
-    // Strip markdown fences and find JSON
-    let clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const jsonMatch = clean.match(/\{[\s\S]*\}/)
-    if (jsonMatch) clean = jsonMatch[0]
-
-    let parsed
-    try {
-      parsed = JSON.parse(clean)
-    } catch {
-      const arrMatch = text.match(/\[[\s\S]*\]/)
-      if (arrMatch) {
-        try { parsed = { transactions: JSON.parse(arrMatch[0]) } }
-        catch { parsed = null }
-      }
-      if (!parsed) {
-        return new Response(JSON.stringify({ error: 'Gemini respondeu mas o formato não é JSON.', debug: text.slice(0, 300) }), { status: 422 })
-      }
+    // Parse pipe-delimited lines
+    const transactions = []
+    for (const line of text.split('\n')) {
+      const parts = line.trim().split('|')
+      if (parts.length < 4) continue
+      const [date, description, amountStr, type] = parts
+      const amount = parseFloat(amountStr.replace(',', '.'))
+      if (!date.match(/^\d{4}-\d{2}-\d{2}$/) || !amount || amount <= 0) continue
+      transactions.push({
+        date: date.trim(),
+        description: description.trim(),
+        amount,
+        type: type.trim().toLowerCase() === 'income' ? 'income' : 'expense',
+      })
     }
 
-    const transactions = (parsed.transactions || []).filter(
-      (t) => t.date && t.amount > 0
-    )
+    if (transactions.length === 0) {
+      return new Response(JSON.stringify({ error: 'Nenhuma transação encontrada no PDF.', debug: text.slice(0, 400) }), { status: 422 })
+    }
 
     return new Response(JSON.stringify({ transactions }), {
       headers: { 'Content-Type': 'application/json' },
