@@ -22,21 +22,25 @@ export default async function handler(req) {
     return new Response(JSON.stringify({ error: 'pdfBase64 is required' }), { status: 400 })
   }
 
-  const prompt = `Look at this bank statement PDF and list every financial transaction you find.
+  const prompt = `Read ALL pages of this bank statement PDF carefully and extract EVERY single financial transaction. Do not stop early, do not skip any transaction, process every page completely.
 
 For each transaction output one line in this exact format:
 DATE|DESCRIPTION|AMOUNT|TYPE
 
-Where:
-- DATE is YYYY-MM-DD
-- DESCRIPTION is the transaction description
-- AMOUNT is a positive number (no currency symbol, use dot as decimal)
-- TYPE is either "expense" or "income"
+Rules:
+- DATE: YYYY-MM-DD format
+- DESCRIPTION: transaction description text
+- AMOUNT: positive number, dot as decimal separator, no currency symbol
+- TYPE: "expense" for debits/purchases/withdrawals, "income" for credits/deposits/salary
 
-Output ONLY the data lines, no headers, no explanations, no empty lines.
-Example:
+Output ONLY the data lines. No headers, no totals, no balance lines, no blank lines, no explanations.
+
+Example output:
 2024-01-15|Supermercado Extra|150.50|expense
-2024-01-16|Salário|3000.00|income`
+2024-01-16|Salário Janeiro|3000.00|income
+2024-01-17|Uber|25.90|expense
+
+Now extract ALL transactions from ALL pages:`
 
   try {
     const res = await fetch(
@@ -51,7 +55,7 @@ Example:
               { text: prompt },
             ],
           }],
-          generationConfig: { maxOutputTokens: 4096, temperature: 0 },
+          generationConfig: { maxOutputTokens: 8192, temperature: 0 },
         }),
       }
     )
