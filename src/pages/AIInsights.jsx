@@ -1,176 +1,167 @@
-import { useState, useMemo } from 'react'
-import { format, subMonths } from 'date-fns'
-import { Sparkles, RefreshCw, TrendingUp, TrendingDown, AlertCircle, Lightbulb, Target } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Sparkles, Send, Loader2, User, Bot } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { formatCurrency } from '@/lib/utils'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 
-function InsightCard({ icon: Icon, title, content, type = 'info' }) {
-  const styles = {
-    info: 'border-blue-100 bg-blue-50',
-    success: 'border-emerald-100 bg-emerald-50',
-    warning: 'border-amber-100 bg-amber-50',
-    danger: 'border-red-100 bg-red-50',
-    ai: 'border-violet-100 bg-violet-50',
-  }
-  const iconStyles = {
-    info: 'text-blue-500',
-    success: 'text-emerald-500',
-    warning: 'text-amber-500',
-    danger: 'text-red-500',
-    ai: 'text-violet-500',
-  }
+const QUICK_ACTIONS = [
+  'Resumo financeiro do mês',
+  'Onde estou gastando mais?',
+  'Estou no azul esse mês?',
+  'Como posso economizar?',
+  'Quais categorias ultrapassaram o orçamento?',
+]
+
+function Message({ msg }) {
+  const isUser = msg.role === 'user'
   return (
-    <div className={`rounded-2xl border p-4 ${styles[type]}`}>
-      <div className="flex items-start gap-3">
-        <Icon size={20} className={`shrink-0 mt-0.5 ${iconStyles[type]}`} />
-        <div>
-          <p className="text-sm font-semibold text-slate-800 mb-1">{title}</p>
-          <p className="text-xs text-slate-600 leading-relaxed">{content}</p>
-        </div>
+    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isUser ? 'bg-blue-500' : 'bg-gradient-to-br from-violet-500 to-blue-500'}`}>
+        {isUser ? <User size={14} className="text-white" /> : <Bot size={14} className="text-white" />}
+      </div>
+      <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${isUser ? 'bg-blue-500 text-white rounded-tr-sm' : 'bg-white border border-slate-100 text-slate-700 rounded-tl-sm shadow-sm'}`}>
+        {msg.content}
       </div>
     </div>
   )
 }
 
 export default function AIInsights() {
-  const { transactions, budgets, getBudgetSpent } = useStore()
+  const { accounts, transactions, budgets } = useStore()
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: 'Olá! Sou o Finance AI, seu assistente financeiro. Posso analisar suas transações, orçamentos e contas para te ajudar a entender melhor sua saúde financeira. O que você gostaria de saber?' },
+  ])
+  const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [generated, setGenerated] = useState(false)
-  const [whatIf, setWhatIf] = useState({ income: 0, expense: 0, days: 30 })
+  const [error, setError] = useState(null)
+  const bottomRef = useRef(null)
+  const inputRef = useRef(null)
 
-  const thisMonth = format(new Date(), 'yyyy-MM')
-  const lastMonth = format(subMonths(new Date(), 1), 'yyyy-MM')
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
 
-  const income = transactions.filter((t) => t.type === 'income' && t.date?.startsWith(thisMonth)).reduce((s, t) => s + t.amount, 0)
-  const expenses = transactions.filter((t) => t.type === 'expense' && t.date?.startsWith(thisMonth)).reduce((s, t) => s + t.amount, 0)
-  const lastIncome = transactions.filter((t) => t.type === 'income' && t.date?.startsWith(lastMonth)).reduce((s, t) => s + t.amount, 0)
-  const lastExpenses = transactions.filter((t) => t.type === 'expense' && t.date?.startsWith(lastMonth)).reduce((s, t) => s + t.amount, 0)
+  const sendMessage = async (text) => {
+    const msg = text || input.trim()
+    if (!msg || loading) return
+    setInput('')
+    setError(null)
 
-  const savingRate = income > 0 ? ((income - expenses) / income) * 100 : 0
-  const topCategory = useMemo(() => {
-    const map = {}
-    transactions.filter((t) => t.type === 'expense' && t.date?.startsWith(thisMonth)).forEach((t) => {
-      map[t.category] = (map[t.category] || 0) + t.amount
-    })
-    return Object.entries(map).sort((a, b) => b[1] - a[1])[0]
-  }, [transactions])
-
-  const overBudgets = budgets.filter((b) => {
-    const spent = getBudgetSpent(b.category, b.period, b.start_date)
-    return spent > b.amount
-  })
-
-  const insights = useMemo(() => {
-    const list = []
-    if (savingRate >= 20) list.push({ icon: TrendingUp, title: 'Excelente taxa de poupança!', content: `Você está poupando ${savingRate.toFixed(0)}% da sua renda este mês. Continue assim — a meta ideal é manter acima de 20%.`, type: 'success' })
-    else if (savingRate < 0) list.push({ icon: AlertCircle, title: 'Atenção: despesas superam receitas', content: `Suas despesas (${formatCurrency(expenses)}) superaram suas receitas (${formatCurrency(income)}) em ${formatCurrency(expenses - income)}. Revise seus gastos.`, type: 'danger' })
-    else list.push({ icon: TrendingDown, title: 'Taxa de poupança abaixo do ideal', content: `Você poupou ${savingRate.toFixed(0)}% da renda. Tente reduzir despesas para atingir pelo menos 20% de poupança.`, type: 'warning' })
-
-    if (topCategory) list.push({ icon: Target, title: `Maior gasto: ${topCategory[0]}`, content: `Você gastou ${formatCurrency(topCategory[1])} em ${topCategory[0]} este mês, representando ${((topCategory[1] / expenses) * 100).toFixed(0)}% das despesas. Avalie se há espaço para redução.`, type: 'info' })
-
-    if (overBudgets.length > 0) list.push({ icon: AlertCircle, title: `${overBudgets.length} orçamento(s) estourado(s)`, content: `As categorias ${overBudgets.map((b) => b.category).join(', ')} ultrapassaram o limite definido. Considere ajustar os orçamentos ou reduzir os gastos.`, type: 'warning' })
-
-    const expenseChange = lastExpenses > 0 ? ((expenses - lastExpenses) / lastExpenses) * 100 : 0
-    if (expenseChange > 10) list.push({ icon: TrendingUp, title: 'Despesas aumentaram vs mês passado', content: `Suas despesas cresceram ${expenseChange.toFixed(0)}% em relação ao mês anterior. Verifique quais categorias tiveram maior aumento.`, type: 'warning' })
-    else if (expenseChange < -10) list.push({ icon: TrendingDown, title: 'Ótimo! Despesas reduziram', content: `Suas despesas diminuíram ${Math.abs(expenseChange).toFixed(0)}% em relação ao mês anterior. Ótimo trabalho controlando os gastos!`, type: 'success' })
-
-    if (generated) list.push({ icon: Sparkles, title: 'Dica personalizada da IA', content: 'Com base no seu padrão de gastos, você poderia economizar até R$ 200/mês reduzindo refeições fora de casa para 2x por semana. Isso equivale a R$ 2.400/ano — suficiente para uma viagem!', type: 'ai' })
-    if (generated) list.push({ icon: Lightbulb, title: 'Oportunidade de investimento', content: 'Você tem potencial de poupar R$ 500/mês. Investir em Tesouro Direto (IPCA+6%) renderia aproximadamente R$ 6.200 em 12 meses, considerando juros compostos.', type: 'ai' })
-
-    return list
-  }, [savingRate, topCategory, overBudgets, generated])
-
-  const handleGenerate = () => {
+    const userMsg = { role: 'user', content: msg }
+    const newMessages = [...messages, userMsg]
+    setMessages(newMessages)
     setLoading(true)
-    setTimeout(() => { setLoading(false); setGenerated(true) }, 1500)
+
+    const history = newMessages.slice(1, -1)
+
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: msg,
+          history,
+          financialData: { accounts, transactions, budgets },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao consultar IA')
+      setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }])
+    } catch (err) {
+      setError(err.message)
+      setMessages((prev) => prev.slice(0, -1))
+    } finally {
+      setLoading(false)
+      inputRef.current?.focus()
+    }
   }
 
-  // What-If calculation
-  const whatIfBalance = (income + whatIf.income - expenses - whatIf.expense)
-  const projectedSaving = whatIfBalance > 0 ? whatIfBalance * (whatIf.days / 30) : 0
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }
 
   return (
-    <div className="p-4 lg:p-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2">
-          <Sparkles size={20} className="text-violet-500" />
-          <h1 className="text-xl font-bold text-slate-900">IA & Insights</h1>
+    <div className="flex flex-col h-[calc(100vh-4rem)] lg:h-screen max-w-3xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 lg:px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
+          <Sparkles size={16} className="text-white" />
         </div>
-        <Button onClick={handleGenerate} disabled={loading} variant={generated ? 'outline' : 'default'} size="sm">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Analisando...' : generated ? 'Atualizar' : 'Gerar insights'}
-        </Button>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-3 text-white">
-          <p className="text-xs text-white/80">Receitas</p>
-          <p className="text-sm font-bold mt-0.5">{formatCurrency(income)}</p>
-        </div>
-        <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-3 text-white">
-          <p className="text-xs text-white/80">Despesas</p>
-          <p className="text-sm font-bold mt-0.5">{formatCurrency(expenses)}</p>
-        </div>
-        <div className={`bg-gradient-to-br rounded-2xl p-3 text-white ${savingRate >= 0 ? 'from-emerald-500 to-emerald-600' : 'from-red-500 to-red-600'}`}>
-          <p className="text-xs text-white/80">Poupança</p>
-          <p className="text-sm font-bold mt-0.5">{savingRate.toFixed(0)}%</p>
+        <div>
+          <h1 className="text-base font-bold text-slate-900">Finance AI</h1>
+          <p className="text-xs text-slate-400">Assistente financeiro pessoal</p>
         </div>
       </div>
 
-      {/* Insights list */}
-      <div className="flex flex-col gap-3 mb-6">
-        {insights.map((ins, i) => <InsightCard key={i} {...ins} />)}
-        {!generated && insights.length < 3 && (
-          <div className="text-center py-6 bg-violet-50 rounded-2xl border border-violet-100">
-            <Sparkles size={24} className="text-violet-400 mx-auto mb-2" />
-            <p className="text-sm text-violet-600 font-medium">Clique em "Gerar insights" para análise avançada</p>
-            <p className="text-xs text-violet-400 mt-1">A IA irá analisar seus padrões e gerar recomendações personalizadas</p>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 space-y-4 bg-slate-50">
+        {messages.map((msg, i) => (
+          <Message key={i} msg={msg} />
+        ))}
+
+        {loading && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shrink-0">
+              <Bot size={14} className="text-white" />
+            </div>
+            <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+              <Loader2 size={16} className="animate-spin text-violet-400" />
+            </div>
           </div>
         )}
+
+        {error && (
+          <div className="text-center text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2">
+            {error} — tente novamente
+          </div>
+        )}
+
+        <div ref={bottomRef} />
       </div>
 
-      {/* What-If simulator */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Target size={16} className="text-blue-500" />
-            <CardTitle className="text-blue-600">Simulador What-If</CardTitle>
+      {/* Quick actions */}
+      {messages.length <= 1 && (
+        <div className="px-4 lg:px-6 py-3 bg-white border-t border-slate-100 shrink-0">
+          <p className="text-xs text-slate-400 mb-2">Sugestões rápidas:</p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_ACTIONS.map((action) => (
+              <button
+                key={action}
+                onClick={() => sendMessage(action)}
+                disabled={loading}
+                className="text-xs bg-violet-50 text-violet-600 border border-violet-100 rounded-full px-3 py-1.5 hover:bg-violet-100 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {action}
+              </button>
+            ))}
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <p className="text-xs text-slate-500 mb-4">Simule cenários financeiros e veja o impacto no seu saldo.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="text-xs text-slate-500 font-medium block mb-1">+ Receita extra (R$)</label>
-              <input type="number" min="0" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={whatIf.income} onChange={(e) => setWhatIf((w) => ({ ...w, income: parseFloat(e.target.value) || 0 }))} />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 font-medium block mb-1">− Reduzir despesas (R$)</label>
-              <input type="number" min="0" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={whatIf.expense} onChange={(e) => setWhatIf((w) => ({ ...w, expense: parseFloat(e.target.value) || 0 }))} />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 font-medium block mb-1">Período</label>
-              <select className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" value={whatIf.days} onChange={(e) => setWhatIf((w) => ({ ...w, days: parseInt(e.target.value) }))}>
-                <option value={30}>30 dias</option>
-                <option value={60}>60 dias</option>
-                <option value={90}>90 dias</option>
-              </select>
-            </div>
-          </div>
-          <div className="bg-gradient-to-r from-blue-50 to-violet-50 rounded-xl p-4">
-            <p className="text-xs text-slate-500 mb-1">Saldo projetado em {whatIf.days} dias:</p>
-            <p className={`text-2xl font-bold ${projectedSaving >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-              {formatCurrency(projectedSaving)}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Economia mensal simulada: {formatCurrency(whatIfBalance)} · Saldo adicional: {formatCurrency(projectedSaving - (income - expenses) * (whatIf.days / 30))}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="px-4 lg:px-6 py-3 bg-white border-t border-slate-100 shrink-0">
+        <div className="flex gap-2 items-end">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Pergunte sobre suas finanças..."
+            rows={1}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent max-h-32 overflow-y-auto"
+            style={{ minHeight: '42px' }}
+          />
+          <button
+            onClick={() => sendMessage()}
+            disabled={!input.trim() || loading}
+            className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shrink-0 disabled:opacity-40 hover:opacity-90 transition-opacity cursor-pointer"
+          >
+            {loading ? <Loader2 size={16} className="text-white animate-spin" /> : <Send size={16} className="text-white" />}
+          </button>
+        </div>
+        <p className="text-xs text-slate-300 mt-1.5 text-center">Enter para enviar · Shift+Enter para nova linha</p>
+      </div>
     </div>
   )
 }
