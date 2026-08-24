@@ -312,12 +312,18 @@ function ImportCSVModal({ open, onClose }) {
           {/* Account selector */}
           <div>
             <label className="text-sm font-medium text-slate-700 mb-1.5 block">Conta destino</label>
-            <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-              {accounts.filter((a) => a.is_active).map((a) => (
-                <option key={a.id} value={a.id}>{a.icon} {a.name}</option>
-              ))}
-              {accounts.length === 0 && <option value="">Nenhuma conta cadastrada</option>}
-            </select>
+            {accounts.filter((a) => a.is_active).length === 0 ? (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">Você precisa criar uma conta em <strong>Contas</strong> antes de importar transações.</p>
+              </div>
+            ) : (
+              <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {accounts.filter((a) => a.is_active).map((a) => (
+                  <option key={a.id} value={a.id}>{a.icon} {a.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* File drop zone */}

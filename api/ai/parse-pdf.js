@@ -22,27 +22,21 @@ export default async function handler(req) {
     return new Response(JSON.stringify({ error: 'pdfBase64 is required' }), { status: 400 })
   }
 
-  const prompt = `Você é um extrator de dados financeiros. Analise este extrato bancário em PDF e extraia TODAS as transações financeiras.
+  const prompt = `Extract all financial transactions from this bank statement PDF.
 
-Retorne SOMENTE um JSON válido no seguinte formato (sem texto adicional, sem markdown, sem \`\`\`json):
-{
-  "transactions": [
-    {
-      "date": "YYYY-MM-DD",
-      "description": "descrição da transação",
-      "amount": 150.00,
-      "type": "expense"
-    }
-  ]
-}
+IMPORTANT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanations. Just the JSON.
 
-Regras:
-- "date" deve estar no formato YYYY-MM-DD
-- "amount" deve ser um número positivo (sem sinal)
-- "type" deve ser "expense" para débitos/saídas e "income" para créditos/entradas
-- Inclua TODAS as transações visíveis no extrato
-- Ignore saldos, totais e linhas de cabeçalho
-- Se não conseguir determinar o tipo, use "expense"`
+Required format:
+{"transactions":[{"date":"YYYY-MM-DD","description":"transaction description","amount":150.00,"type":"expense"}]}
+
+Rules:
+- date: ISO format YYYY-MM-DD only
+- amount: positive number, no sign
+- type: "expense" for debits/withdrawals/purchases, "income" for credits/deposits/salary
+- Include ALL transactions in the document
+- Skip balance lines, totals, headers
+- Default to "expense" when unclear
+- If the PDF has no readable text (scanned image), return {"transactions":[]}`
 
   try {
     const res = await fetch(
@@ -74,14 +68,28 @@ Regras:
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
-    // Strip markdown fences if present
-    const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    // Strip markdown fences and find JSON
+    let clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+    // Try to extract JSON object if there's surrounding text
+    const jsonMatch = clean.match(/\{[\s\S]*\}/)
+    if (jsonMatch) clean = jsonMatch[0]
 
     let parsed
     try {
       parsed = JSON.parse(clean)
     } catch {
-      return new Response(JSON.stringify({ error: 'Não foi possível interpretar o PDF. Tente o formato CSV.' }), { status: 422 })
+      // Last resort: try to find a transactions array directly
+      const arrMatch = text.match(/\[[\s\S]*\]/)
+      if (arrMatch) {
+        try {
+          parsed = { transactions: JSON.parse(arrMatch[0]) }
+        } catch {
+          return new Response(JSON.stringify({ error: 'Não foi possível interpretar o PDF. O arquivo pode ser escaneado (imagem) — tente exportar como PDF de texto ou use CSV.' }), { status: 422 })
+        }
+      } else {
+        return new Response(JSON.stringify({ error: 'Não foi possível interpretar o PDF. O arquivo pode ser escaneado (imagem) — tente exportar como PDF de texto ou use CSV.' }), { status: 422 })
+      }
     }
 
     const transactions = (parsed.transactions || []).filter(
