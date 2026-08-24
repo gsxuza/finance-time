@@ -1,48 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { generateId, DEFAULT_CATEGORIES, getDaysLate, calcInterest } from '@/lib/utils'
-import { addMonths, subMonths, format } from 'date-fns'
-
-const today = new Date()
-const thisMonth = format(today, 'yyyy-MM')
-
-const SEED_ACCOUNTS = [
-  { id: 'acc-1', name: 'Conta Corrente', type: 'checking', balance: 5420.5, color: '#3b82f6', icon: '🏦', is_active: true },
-  { id: 'acc-2', name: 'Poupança', type: 'savings', balance: 12800.0, color: '#10b981', icon: '🐷', is_active: true },
-  { id: 'acc-3', name: 'Cartão Nubank', type: 'credit_card', balance: -1250.3, color: '#8b5cf6', icon: '💳', is_active: true, credit_limit: 8000 },
-]
-
-const SEED_TRANSACTIONS = [
-  { id: 'tx-1', type: 'income', amount: 8500, category: 'Salário', description: 'Salário Junho', date: `${thisMonth}-05`, account_id: 'acc-1', is_recurring: true, recurring_frequency: 'monthly' },
-  { id: 'tx-2', type: 'expense', amount: 1800, category: 'Moradia', description: 'Aluguel', date: `${thisMonth}-10`, account_id: 'acc-1', is_recurring: true, recurring_frequency: 'monthly' },
-  { id: 'tx-3', type: 'expense', amount: 350, category: 'Alimentação', description: 'Supermercado Pão de Açúcar', date: `${thisMonth}-12`, account_id: 'acc-1' },
-  { id: 'tx-4', type: 'expense', amount: 89.9, category: 'Transporte', description: 'Uber', date: `${thisMonth}-13`, account_id: 'acc-3' },
-  { id: 'tx-5', type: 'expense', amount: 250, category: 'Saúde', description: 'Consulta médica', date: `${thisMonth}-14`, account_id: 'acc-1' },
-  { id: 'tx-6', type: 'income', amount: 1200, category: 'Freelance', description: 'Projeto design site', date: `${thisMonth}-15`, account_id: 'acc-1' },
-  { id: 'tx-7', type: 'expense', amount: 189, category: 'Lazer', description: 'Netflix, Spotify, Disney+', date: `${thisMonth}-16`, account_id: 'acc-3' },
-  { id: 'tx-8', type: 'expense', amount: 420, category: 'Restaurante', description: 'Jantar aniversário', date: `${thisMonth}-17`, account_id: 'acc-3' },
-  { id: 'tx-9', type: 'expense', amount: 79.9, category: 'Tecnologia', description: 'iCloud 200GB', date: `${thisMonth}-18`, account_id: 'acc-3' },
-  { id: 'tx-10', type: 'expense', amount: 310, category: 'Educação', description: 'Curso online', date: `${thisMonth}-19`, account_id: 'acc-1' },
-]
-
-const SEED_BUDGETS = [
-  { id: 'bud-1', category: 'Alimentação', amount: 800, period: 'monthly', start_date: `${thisMonth}-01`, alert_threshold: 80, is_active: true },
-  { id: 'bud-2', category: 'Transporte', amount: 400, period: 'monthly', start_date: `${thisMonth}-01`, alert_threshold: 80, is_active: true },
-  { id: 'bud-3', category: 'Lazer', amount: 500, period: 'monthly', start_date: `${thisMonth}-01`, alert_threshold: 80, is_active: true },
-  { id: 'bud-4', category: 'Restaurante', amount: 600, period: 'monthly', start_date: `${thisMonth}-01`, alert_threshold: 80, is_active: true },
-]
-
-const SEED_BANK_CONNECTIONS = [
-  { id: 'bc-1', bank_name: 'Nubank', bank_code: 'nubank', account_type: 'checking', account_number: '****1234', status: 'connected', last_sync: new Date(Date.now() - 3600000).toISOString(), consent_expires: format(addMonths(today, 2), 'yyyy-MM-dd'), balance: 3200.5, auto_sync: true },
-  { id: 'bc-2', bank_name: 'Banco Inter', bank_code: 'inter', account_type: 'savings', account_number: '****5678', status: 'expired', last_sync: new Date(Date.now() - 86400000 * 5).toISOString(), consent_expires: format(subMonths(today, 1), 'yyyy-MM-dd'), balance: 5000, auto_sync: false },
-]
+import { generateId, DEFAULT_CATEGORIES } from '@/lib/utils'
 
 const initialState = {
-  accounts: SEED_ACCOUNTS,
-  transactions: SEED_TRANSACTIONS,
-  budgets: SEED_BUDGETS,
+  accounts: [],
+  transactions: [],
+  budgets: [],
   categories: DEFAULT_CATEGORIES,
-  bankConnections: SEED_BANK_CONNECTIONS,
+  bankConnections: [],
   settings: {
     currency: 'BRL',
     language: 'pt-BR',
@@ -95,14 +60,16 @@ export const useStore = create(
       },
       getMonthlyIncome: () => {
         const { transactions } = get()
+        const m = new Date().toISOString().slice(0, 7)
         return transactions
-          .filter((t) => t.type === 'income' && t.date?.startsWith(thisMonth))
+          .filter((t) => t.type === 'income' && t.date?.startsWith(m))
           .reduce((sum, t) => sum + t.amount, 0)
       },
       getMonthlyExpenses: () => {
         const { transactions } = get()
+        const m = new Date().toISOString().slice(0, 7)
         return transactions
-          .filter((t) => t.type === 'expense' && t.date?.startsWith(thisMonth))
+          .filter((t) => t.type === 'expense' && t.date?.startsWith(m))
           .reduce((sum, t) => sum + t.amount, 0)
       },
       getBudgetSpent: (category, period, startDate) => {
@@ -114,7 +81,7 @@ export const useStore = create(
     }),
     {
       name: 'finance-time-store',
-      version: 2,
+      version: 3,
     }
   )
 )
