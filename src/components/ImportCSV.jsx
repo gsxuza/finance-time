@@ -179,7 +179,7 @@ export function ImportCSVButton() {
   return (
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <Upload size={14} /> Importar CSV
+        <Upload size={14} /> Importar extrato
       </Button>
       <ImportCSVModal open={open} onClose={() => setOpen(false)} />
     </>
@@ -193,11 +193,44 @@ function ImportCSVModal({ open, onClose }) {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [importing, setImporting] = useState(false)
+  const [parsing, setParsing] = useState(false)
   const [done, setDone] = useState(false)
   const fileRef = useRef(null)
 
-  const handleFile = (file) => {
-    if (!file) return
+  const handlePDF = (file) => {
+    setParsing(true)
+    setError('')
+    setRows(null)
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      try {
+        const base64 = e.target.result.split(',')[1]
+        const res = await fetch('/api/ai/parse-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pdfBase64: base64 }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Erro ao processar PDF')
+        const withCategories = (data.transactions || []).map((t) => ({
+          ...t,
+          category: t.type === 'income' ? 'Outros Rendimentos' : autoCategory(t.description),
+        }))
+        if (withCategories.length === 0) {
+          setError('Nenhuma transação encontrada no PDF.')
+          return
+        }
+        setRows(withCategories)
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setParsing(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleCSV = (file) => {
     setError('')
     setRows(null)
     setDone(false)
@@ -217,10 +250,17 @@ function ImportCSVModal({ open, onClose }) {
     reader.readAsText(file, 'UTF-8')
   }
 
+  const handleFile = (file) => {
+    if (!file) return
+    setDone(false)
+    if (file.name.endsWith('.pdf')) handlePDF(file)
+    else handleCSV(file)
+  }
+
   const handleDrop = (e) => {
     e.preventDefault()
     const file = e.dataTransfer.files[0]
-    if (file?.name.endsWith('.csv')) handleFile(file)
+    if (file) handleFile(file)
   }
 
   const handleImport = () => {
@@ -241,7 +281,7 @@ function ImportCSVModal({ open, onClose }) {
   const incomeCount = rows?.filter((r) => r.type === 'income').length || 0
 
   return (
-    <Modal open={open} onClose={handleClose} title="Importar Extrato CSV">
+    <Modal open={open} onClose={handleClose} title="Importar Extrato (CSV ou PDF)">
       {done ? (
         <div className="text-center py-8">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -281,7 +321,7 @@ function ImportCSVModal({ open, onClose }) {
           </div>
 
           {/* File drop zone */}
-          {!rows && (
+          {!rows && !parsing && (
             <div
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
@@ -289,9 +329,17 @@ function ImportCSVModal({ open, onClose }) {
               className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors"
             >
               <Upload size={24} className="text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-medium text-slate-600">Arraste o arquivo CSV ou clique para selecionar</p>
-              <p className="text-xs text-slate-400 mt-1">Apenas arquivos .csv</p>
-              <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
+              <p className="text-sm font-medium text-slate-600">Arraste o arquivo ou clique para selecionar</p>
+              <p className="text-xs text-slate-400 mt-1">Aceita <strong>.csv</strong> e <strong>.pdf</strong> · PDF é processado com IA automaticamente</p>
+              <input ref={fileRef} type="file" accept=".csv,.pdf" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
+            </div>
+          )}
+
+          {parsing && (
+            <div className="border-2 border-dashed border-violet-200 rounded-2xl p-8 text-center bg-violet-50">
+              <Loader2 size={24} className="text-violet-400 mx-auto mb-2 animate-spin" />
+              <p className="text-sm font-medium text-violet-700">Analisando PDF com IA...</p>
+              <p className="text-xs text-violet-400 mt-1">Isso pode levar alguns segundos</p>
             </div>
           )}
 
