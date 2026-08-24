@@ -14,12 +14,24 @@ export function formatCurrency(value, currency = 'BRL') {
 
 export function formatDate(date) {
   if (!date) return ''
-  return new Intl.DateTimeFormat('pt-BR').format(new Date(date))
+  try {
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return String(date).slice(0, 10)
+    return new Intl.DateTimeFormat('pt-BR').format(d)
+  } catch {
+    return String(date).slice(0, 10)
+  }
 }
 
 export function formatDateShort(date) {
   if (!date) return ''
-  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(date))
+  try {
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return String(date).slice(0, 10)
+    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(d)
+  } catch {
+    return String(date).slice(0, 10)
+  }
 }
 
 export function generateId() {
