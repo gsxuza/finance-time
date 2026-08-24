@@ -1,25 +1,23 @@
-export const config = { runtime: 'edge' }
+export const config = { maxDuration: 60 }
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), { status: 500 })
+    return res.status(500).json({ error: 'GEMINI_API_KEY not configured' })
   }
 
-  let body
-  try {
-    body = await req.json()
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 })
-  }
-
-  const { pdfBase64 } = body
+  const { pdfBase64 } = req.body || {}
   if (!pdfBase64) {
-    return new Response(JSON.stringify({ error: 'pdfBase64 is required' }), { status: 400 })
+    return res.status(400).json({ error: 'pdfBase64 is required' })
+  }
+
+  // Warn if PDF is too large (>6MB base64 ≈ 4.5MB file)
+  if (pdfBase64.length > 6_000_000) {
+    return res.status(413).json({ error: 'PDF muito grande. Tente um extrato menor (máx ~4MB).' })
   }
 
   const prompt = `Read ALL pages of this bank statement PDF carefully and extract EVERY single financial transaction. Do not stop early, do not skip any transaction, process every page completely.
@@ -43,7 +41,7 @@ Example output:
 Now extract ALL transactions from ALL pages:`
 
   try {
-    const res = await fetch(
+    const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
@@ -60,20 +58,19 @@ Now extract ALL transactions from ALL pages:`
       }
     )
 
-    const data = await res.json()
+    const data = await geminiRes.json()
 
-    if (!res.ok) {
-      return new Response(JSON.stringify({ error: data.error?.message || 'Gemini API error' }), { status: 500 })
+    if (!geminiRes.ok) {
+      return res.status(500).json({ error: data.error?.message || 'Gemini API error' })
     }
 
     const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim()
 
     if (!text) {
       const reason = data.candidates?.[0]?.finishReason || data.promptFeedback?.blockReason || 'unknown'
-      return new Response(JSON.stringify({ error: `Gemini não conseguiu ler o PDF (${reason}). O arquivo pode estar protegido ou ser uma imagem escaneada.` }), { status: 422 })
+      return res.status(422).json({ error: `Gemini não conseguiu ler o PDF (${reason}). O arquivo pode estar protegido ou ser uma imagem escaneada.` })
     }
 
-    // Parse pipe-delimited lines
     const transactions = []
     for (const line of text.split('\n')) {
       const parts = line.trim().split('|')
@@ -90,13 +87,11 @@ Now extract ALL transactions from ALL pages:`
     }
 
     if (transactions.length === 0) {
-      return new Response(JSON.stringify({ error: 'Nenhuma transação encontrada no PDF.', debug: text.slice(0, 400) }), { status: 422 })
+      return res.status(422).json({ error: 'Nenhuma transação encontrada no PDF.', debug: text.slice(0, 400) })
     }
 
-    return new Response(JSON.stringify({ transactions }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return res.status(200).json({ transactions })
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return res.status(500).json({ error: err.message })
   }
 }
