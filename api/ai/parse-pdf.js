@@ -56,7 +56,30 @@ Rules:
               { text: prompt },
             ],
           }],
-          generationConfig: { maxOutputTokens: 4096, temperature: 0 },
+          generationConfig: {
+            maxOutputTokens: 4096,
+            temperature: 0,
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'object',
+              properties: {
+                transactions: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      date: { type: 'string' },
+                      description: { type: 'string' },
+                      amount: { type: 'number' },
+                      type: { type: 'string' },
+                    },
+                    required: ['date', 'description', 'amount', 'type'],
+                  },
+                },
+              },
+              required: ['transactions'],
+            },
+          },
         }),
       }
     )
