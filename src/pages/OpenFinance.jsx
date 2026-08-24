@@ -82,7 +82,7 @@ function ConnectWidget({ onSuccess, onClose, itemId = null }) {
 
     instanceRef.current = new window.PluggyConnect({
       connectToken: token,
-      includeSandbox: process.env.NODE_ENV === 'development',
+      includeSandbox: true,
       onSuccess: async (itemData) => {
         onSuccess(itemData)
       },
