@@ -129,7 +129,7 @@ export default function OpenFinance() {
 
       instanceRef.current = new window.PluggyConnect({
         connectToken: token,
-        includeSandbox: true,
+        includeSandbox: false,
         onSuccess: async (itemData) => {
           const id = itemData?.item?.id || itemData?.id
           if (!id) return
