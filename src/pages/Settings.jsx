@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Settings2, Bell, Shield, RefreshCw } from 'lucide-react'
+import { Settings2, Bell, Shield, RefreshCw, LogOut } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -104,6 +103,14 @@ export default function Settings() {
               className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 cursor-pointer font-medium transition-colors"
             >
               <RefreshCw size={14} /> Revisar onboarding
+            </button>
+          </div>
+          <div className="py-3">
+            <button
+              onClick={() => { localStorage.removeItem('ft_token'); window.location.reload() }}
+              className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 cursor-pointer font-medium transition-colors"
+            >
+              <LogOut size={14} /> Sair da conta
             </button>
           </div>
         </div>
