@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/store/useStore'
+import { markTransfers } from '@/lib/utils'
 
 const UID_KEY = 'finance-time-uid'
 const STATUS_KEY = 'finance-time-sync-status'
@@ -62,7 +63,11 @@ export function useNeonSync() {
           const cloudTxCount = d.state.transactions?.length ?? 0
           const localTxCount = useStore.getState().transactions?.length ?? 0
           if (cloudTxCount > localTxCount) {
-            useStore.setState({ ...d.state })
+            // Cloud state may come from a device that predates is_transfer
+            useStore.setState({
+              ...d.state,
+              transactions: markTransfers(d.state.transactions, d.state.accounts),
+            })
           }
         }
         setSyncStatus({ phase: 'ok', ts: Date.now() })

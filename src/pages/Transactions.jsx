@@ -3,7 +3,7 @@ import { format, startOfWeek, startOfMonth, subMonths, isAfter } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Plus, Search, Trash2, Edit2, Sparkles } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { formatCurrency, formatDate, DEFAULT_CATEGORIES } from '@/lib/utils'
+import { formatCurrency, formatDate, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge, StatusBadge } from '@/components/ui/Badge'
@@ -162,8 +162,8 @@ export default function Transactions() {
     return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]))
   }, [filtered])
 
-  const totalIncome = filtered.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-  const totalExpense = filtered.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+  const totalIncome = filtered.filter((t) => t.type === 'income' && countsAsFlow(t)).reduce((s, t) => s + (t.amount || 0), 0)
+  const totalExpense = filtered.filter((t) => t.type === 'expense' && countsAsFlow(t)).reduce((s, t) => s + (t.amount || 0), 0)
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
@@ -219,7 +219,7 @@ export default function Transactions() {
       ) : (
         <div className="flex flex-col gap-4">
           {grouped.map(([date, txs]) => {
-            const dayTotal = txs.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0)
+            const dayTotal = txs.filter(countsAsFlow).reduce((s, t) => s + (t.type === 'income' ? (t.amount || 0) : -(t.amount || 0)), 0)
             return (
               <div key={date}>
                 <div className="flex items-center justify-between mb-2 px-1">
@@ -242,10 +242,11 @@ export default function Transactions() {
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span className="text-xs text-slate-400">{tx.category}</span>
                               {tx.is_recurring && <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">🔄 {tx.recurring_frequency}</span>}
+                              {tx.is_transfer && <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">↔ Transferência</span>}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                            <span className={`text-sm font-bold ${tx.is_transfer ? 'text-slate-400' : tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
                               {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                             </span>
                             <div className="hidden group-hover:flex gap-1">

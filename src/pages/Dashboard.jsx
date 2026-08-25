@@ -5,7 +5,7 @@ import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'd
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, TrendingDown, Plus, ArrowUpRight, ArrowDownRight, Sparkles, Wallet } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { formatCurrency, formatDateShort, DEFAULT_CATEGORIES } from '@/lib/utils'
+import { formatCurrency, formatDateShort, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -51,8 +51,8 @@ export default function Dashboard() {
     return Array.from({ length: 6 }, (_, i) => {
       const month = subMonths(new Date(), 5 - i)
       const monthStr = format(month, 'yyyy-MM')
-      const income = transactions.filter((t) => t.type === 'income' && t.date?.startsWith(monthStr)).reduce((s, t) => s + t.amount, 0)
-      const expense = transactions.filter((t) => t.type === 'expense' && t.date?.startsWith(monthStr)).reduce((s, t) => s + t.amount, 0)
+      const income = transactions.filter((t) => t.type === 'income' && countsAsFlow(t) && t.date?.startsWith(monthStr)).reduce((s, t) => s + (t.amount || 0), 0)
+      const expense = transactions.filter((t) => t.type === 'expense' && countsAsFlow(t) && t.date?.startsWith(monthStr)).reduce((s, t) => s + (t.amount || 0), 0)
       return {
         name: format(month, 'MMM', { locale: ptBR }),
         Receitas: income,
@@ -67,7 +67,7 @@ export default function Dashboard() {
     const today = new Date()
     const monthStr = format(today, 'yyyy-MM')
     const grouped = {}
-    transactions.filter((t) => t.type === 'expense' && t.date?.startsWith(monthStr)).forEach((t) => {
+    transactions.filter((t) => t.type === 'expense' && countsAsFlow(t) && t.date?.startsWith(monthStr)).forEach((t) => {
       grouped[t.category] = (grouped[t.category] || 0) + t.amount
     })
     return Object.entries(grouped)

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { generateId, currentMonth, DEFAULT_CATEGORIES } from '@/lib/utils'
+import { generateId, currentMonth, countsAsFlow, markTransfers, DEFAULT_CATEGORIES } from '@/lib/utils'
 
 const initialState = {
   accounts: [],
@@ -87,26 +87,32 @@ export const useStore = create(
         const { transactions } = get()
         const m = currentMonth()
         return transactions
-          .filter((t) => t.type === 'income' && t.date?.startsWith(m))
+          .filter((t) => t.type === 'income' && countsAsFlow(t) && t.date?.startsWith(m))
           .reduce((sum, t) => sum + (t.amount || 0), 0)
       },
       getMonthlyExpenses: () => {
         const { transactions } = get()
         const m = currentMonth()
         return transactions
-          .filter((t) => t.type === 'expense' && t.date?.startsWith(m))
+          .filter((t) => t.type === 'expense' && countsAsFlow(t) && t.date?.startsWith(m))
           .reduce((sum, t) => sum + (t.amount || 0), 0)
       },
       getBudgetSpent: (category, period, startDate) => {
         const { transactions } = get()
         return transactions
-          .filter((t) => t.type === 'expense' && t.category === category && t.date >= startDate)
+          .filter((t) => t.type === 'expense' && countsAsFlow(t) && t.category === category && t.date >= startDate)
           .reduce((sum, t) => sum + t.amount, 0)
       },
     }),
     {
       name: 'finance-time-v4',
-      version: 1,
+      version: 2,
+      // v2 introduced is_transfer, so credit card bill payments already stored
+      // need flagging — they were imported before the distinction existed.
+      migrate: (state, from) => {
+        if (!state || from >= 2) return state
+        return { ...state, transactions: markTransfers(state.transactions, state.accounts) }
+      },
     }
   )
 )

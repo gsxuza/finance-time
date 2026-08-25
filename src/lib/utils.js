@@ -50,6 +50,60 @@ export function currentMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+function normalize(s = '') {
+  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+// Paying a credit card bill moves money between the user's own accounts: it
+// leaves the checking account and settles the card. The purchases behind it were
+// already counted as expenses on the card, so counting the payment again would
+// double the month's spending.
+// Descriptions are normalized (lowercased, accents stripped) before matching.
+const CARD_PAYMENT_PATTERNS = [
+  /\bp(agamento|agto|gto|ag)?\.?\s*(de\s+|da\s+)?fatura/,
+  /fatura\s*(do\s+)?cartao/,
+  /\bp(agamento|agto|gto|ag)?\.?\s*(de\s+|do\s+)?cartao/,
+  /pagamento\s+efetuado.*cartao/,
+]
+
+// On a credit card, the incoming entry that settles the bill is often described
+// only as "Pagamento recebido" — unambiguous there, but a normal income
+// description on a checking account, so it only counts on the card side.
+const CARD_SIDE_PAYMENT_PATTERNS = [
+  /pagamento\s+recebido/,
+  /^pagamento$/,
+]
+
+export function isCardPayment(description = '', { onCard = false } = {}) {
+  const d = normalize(description)
+  if (CARD_PAYMENT_PATTERNS.some((re) => re.test(d))) return true
+  return onCard && CARD_SIDE_PAYMENT_PATTERNS.some((re) => re.test(d))
+}
+
+export function countsAsFlow(t) {
+  return !t?.is_transfer
+}
+
+// Backfills is_transfer on transactions imported before card payments were
+// recognised. Also used on state arriving from cloud sync, which may have been
+// written by a device that has not been updated yet.
+export function markTransfers(transactions = [], accounts = []) {
+  const cardAccountIds = new Set(
+    accounts.filter((a) => a.type === 'credit_card').map((a) => a.id)
+  )
+  return transactions.map((t) => {
+    if (typeof t.is_transfer === 'boolean') return t
+    const onCard = cardAccountIds.has(t.account_id)
+    return { ...t, is_transfer: isCardPayment(t.description || '', { onCard }) }
+  })
+}
+
+export function sumFlow(transactions, type, monthPrefix) {
+  return transactions
+    .filter((t) => t.type === type && countsAsFlow(t) && (!monthPrefix || t.date?.startsWith(monthPrefix)))
+    .reduce((s, t) => s + (t.amount || 0), 0)
+}
+
 export function calcInterest(amount, ratePercent, daysLate) {
   if (daysLate <= 0) return amount
   return amount + amount * (ratePercent / 100) * daysLate

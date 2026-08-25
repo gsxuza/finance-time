@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { FileDown, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { formatCurrency, DEFAULT_CATEGORIES } from '@/lib/utils'
+import { formatCurrency, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
@@ -23,8 +23,8 @@ export default function Reports() {
     Array.from({ length: 6 }, (_, i) => {
       const m = subMonths(new Date(), 5 - i)
       const ms = format(m, 'yyyy-MM')
-      const income = transactions.filter((t) => t.type === 'income' && t.date?.startsWith(ms)).reduce((s, t) => s + t.amount, 0)
-      const expenses = transactions.filter((t) => t.type === 'expense' && t.date?.startsWith(ms)).reduce((s, t) => s + t.amount, 0)
+      const income = transactions.filter((t) => t.type === 'income' && countsAsFlow(t) && t.date?.startsWith(ms)).reduce((s, t) => s + (t.amount || 0), 0)
+      const expenses = transactions.filter((t) => t.type === 'expense' && countsAsFlow(t) && t.date?.startsWith(ms)).reduce((s, t) => s + (t.amount || 0), 0)
       return { name: format(m, 'MMM', { locale: ptBR }), Receitas: income, Despesas: expenses }
     }),
     [transactions]
@@ -32,11 +32,11 @@ export default function Reports() {
 
   const selectedData = useMemo(() => {
     const txs = transactions.filter((t) => t.date?.startsWith(selectedMonth))
-    const income = txs.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-    const expenses = txs.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+    const income = txs.filter((t) => t.type === 'income' && countsAsFlow(t)).reduce((s, t) => s + (t.amount || 0), 0)
+    const expenses = txs.filter((t) => t.type === 'expense' && countsAsFlow(t)).reduce((s, t) => s + (t.amount || 0), 0)
 
     const catMap = {}
-    txs.filter((t) => t.type === 'expense').forEach((t) => {
+    txs.filter((t) => t.type === 'expense' && countsAsFlow(t)).forEach((t) => {
       catMap[t.category] = (catMap[t.category] || 0) + t.amount
     })
     const byCategory = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }))

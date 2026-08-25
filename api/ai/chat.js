@@ -52,12 +52,17 @@ async function chat(req) {
     : new Date().toISOString().slice(0, 7)
 
   const sum = (list) => list.reduce((s, t) => s + (t.amount || 0), 0)
-  const monthlyIncome = sum(transactions.filter((t) => t.type === 'income' && t.date?.startsWith(thisMonth)))
-  const monthlyExpenses = sum(transactions.filter((t) => t.type === 'expense' && t.date?.startsWith(thisMonth)))
+
+  // Credit card bill payments are transfers between the user's own accounts.
+  // They stay visible so each account mirrors the bank, but they are excluded
+  // from the totals: the purchases behind them already count on the card.
+  const isFlow = (t) => !t.is_transfer
+  const monthlyIncome = sum(transactions.filter((t) => t.type === 'income' && isFlow(t) && t.date?.startsWith(thisMonth)))
+  const monthlyExpenses = sum(transactions.filter((t) => t.type === 'expense' && isFlow(t) && t.date?.startsWith(thisMonth)))
 
   const categoryTotals = {}
   transactions
-    .filter((t) => t.type === 'expense' && t.date?.startsWith(thisMonth))
+    .filter((t) => t.type === 'expense' && isFlow(t) && t.date?.startsWith(thisMonth))
     .forEach((t) => {
       const cat = t.category || 'Sem categoria'
       categoryTotals[cat] = (categoryTotals[cat] || 0) + (t.amount || 0)
@@ -78,8 +83,9 @@ async function chat(req) {
   // slice meant questions like "quais foram minhas receitas?" could only ever be
   // answered from whatever happened to fall inside that slice.
   const monthTxs = transactions.filter((t) => t.date?.startsWith(thisMonth))
-  const monthIncome = monthTxs.filter((t) => t.type === 'income').sort(byDateDesc)
-  const monthExpenses = monthTxs.filter((t) => t.type === 'expense').sort(byDateDesc)
+  const monthIncome = monthTxs.filter((t) => t.type === 'income' && isFlow(t)).sort(byDateDesc)
+  const monthExpenses = monthTxs.filter((t) => t.type === 'expense' && isFlow(t)).sort(byDateDesc)
+  const monthTransfers = monthTxs.filter((t) => !isFlow(t)).sort(byDateDesc)
 
   const LIST_CAP = 300
   const renderList = (list) => {
@@ -99,7 +105,7 @@ async function chat(req) {
   const budgetSummary = budgets
     .map((b) => {
       const spent = transactions
-        .filter((t) => t.type === 'expense' && t.category === b.category && (!b.start_date || t.date >= b.start_date))
+        .filter((t) => t.type === 'expense' && isFlow(t) && t.category === b.category && (!b.start_date || t.date >= b.start_date))
         .reduce((s, t) => s + (t.amount || 0), 0)
       return `  ${b.category}: gasto ${money(spent)} de ${money(b.amount)}`
     })
@@ -129,6 +135,11 @@ ${renderList(monthIncome)}
 TODAS as despesas de ${thisMonth} (${monthExpenses.length} no total, somando ${money(monthlyExpenses)}):
 ${renderList(monthExpenses)}
 
+Pagamentos de fatura de ${thisMonth} (transferências entre contas do próprio
+usuário — NÃO são despesas novas e já estão fora dos totais acima, porque as
+compras correspondentes já foram contadas no cartão):
+${monthTransfers.length ? monthTransfers.map(line).join('\n') : '  Nenhum'}
+
 Transações de meses anteriores (até 100 mais recentes):
 ${olderTxs.length ? olderTxs.map((t) => `${line(t)} | ${t.type === 'income' ? 'receita' : 'despesa'}`).join('\n') : '  Nenhuma'}
 
@@ -143,7 +154,11 @@ INSTRUÇÕES:
 - Baseie tudo nos dados reais acima e confira as somas antes de responder
 - Seja completo: explique o que os números significam e o que chama atenção
 - Dê conselhos práticos e personalizados quando fizer sentido
-- Se não há dados suficientes para responder, diga isso claramente`
+- Se não há dados suficientes para responder, diga isso claramente
+- Pagamento de fatura do cartão não é uma despesa nova: é o dinheiro saindo da
+  conta corrente para quitar compras que já foram contadas no cartão. Não
+  inclua esses valores ao somar gastos, mas mencione-os se o usuário perguntar
+  sobre movimentações da conta corrente.`
 
   // Gemini uses "model" for assistant role
   const contents = [

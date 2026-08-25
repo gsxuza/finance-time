@@ -3,7 +3,7 @@ import { format, differenceInDays, parseISO, subMonths } from 'date-fns'
 import { Plus, RefreshCw, Unlink, AlertTriangle, X, ExternalLink, Loader2 } from 'lucide-react'
 import { PluggyConnect } from 'react-pluggy-connect'
 import { useStore } from '@/store/useStore'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, isCardPayment } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
@@ -123,9 +123,17 @@ async function buildSyncPayload(pluggyAccounts) {
     try {
       const { results: txs, warning } = await fetchPluggyTransactions(a.id, from, to)
       if (warning) warnings.push(`${a.name}: ${warning}`)
+      const onCard = a.type === 'CREDIT'
       for (const t of txs) {
         const isExpense = t.type === 'DEBIT'
         const rawDesc = t.description || t.merchant?.name || t.descriptionRaw || ''
+
+        // A credit card bill payment is a transfer between the user's own
+        // accounts: it leaves the checking account and settles the card. Keep
+        // both entries (the accounts must mirror the bank) but flag them so
+        // they don't get counted as spending on top of the card purchases.
+        const isTransfer = isCardPayment(rawDesc, { onCard })
+
         allTxs.push({
           pluggy_id: t.id,
           pluggy_account_id: a.id,
@@ -133,7 +141,8 @@ async function buildSyncPayload(pluggyAccounts) {
           description: rawDesc,
           amount: Math.abs(t.amount ?? 0),
           type: isExpense ? 'expense' : 'income',
-          category: autoCategory(rawDesc),
+          category: isTransfer ? 'Pagamento de fatura' : autoCategory(rawDesc),
+          is_transfer: isTransfer,
         })
       }
     } catch (e) {
