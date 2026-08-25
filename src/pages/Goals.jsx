@@ -1,310 +1,366 @@
 import { useState, useMemo } from 'react'
-import { format, differenceInDays, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { Plus, Edit2, Trash2, Target, CheckCircle2, PlusCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Target, Plus, CheckCircle2, Trash2, PiggyBank, TrendingUp, Clock, X } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { formatCurrency } from '@/lib/utils'
-import { Card, CardContent } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
-import { Input } from '@/components/ui/Input'
+import { formatCurrency, generateId } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
-const GOAL_ICONS = ['🎯', '🏖️', '🏠', '🚗', '📱', '✈️', '🎓', '💍', '🏋️', '🐶', '🎸', '💻', '🛟', '💰', '🏦']
-const GOAL_COLORS = ['#4ade80', '#60a5fa', '#a78bfa', '#f472b6', '#fbbf24', '#34d399', '#f87171', '#06b6d4', '#fb923c', '#a3e635']
+const ICONS = ['🎯', '🏠', '🚗', '✈️', '📚', '💍', '🏖️', '💻', '🐾', '💡', '🏋️', '🎓', '🛡️', '🌱', '💎']
+const COLORS = [
+  { id: 'blue', label: 'Azul', value: '#60a5fa' },
+  { id: 'violet', label: 'Violeta', value: '#a78bfa' },
+  { id: 'green', label: 'Verde', value: '#4ade80' },
+  { id: 'amber', label: 'Âmbar', value: '#fbbf24' },
+  { id: 'rose', label: 'Rosa', value: '#f472b6' },
+  { id: 'cyan', label: 'Ciano', value: '#22d3ee' },
+  { id: 'orange', label: 'Laranja', value: '#fb923c' },
+  { id: 'teal', label: 'Verde-azul', value: '#2dd4bf' },
+  { id: 'indigo', label: 'Índigo', value: '#818cf8' },
+  { id: 'lime', label: 'Lima', value: '#a3e635' },
+]
 
-function GoalForm({ onClose, initial }) {
-  const { addGoal, updateGoal } = useStore()
-  const [form, setForm] = useState(initial || {
-    name: '',
-    icon: '🎯',
-    target_amount: '',
-    current_amount: '',
-    deadline: '',
-    color: '#4ade80',
-    notes: '',
-  })
+const EMPTY_FORM = { name: '', icon: '🎯', target_amount: '', current_amount: '', deadline: '', color: '#60a5fa' }
+
+function GoalForm({ initial = EMPTY_FORM, onSave, onCancel }) {
+  const [form, setForm] = useState(initial)
+
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const data = {
-      ...form,
+    if (!form.name.trim() || !form.target_amount) return
+    onSave({
+      name: form.name.trim(),
+      icon: form.icon,
       target_amount: parseFloat(form.target_amount) || 0,
       current_amount: parseFloat(form.current_amount) || 0,
-    }
-    if (initial) updateGoal(initial.id, data)
-    else addGoal(data)
-    onClose()
+      deadline: form.deadline || null,
+      color: form.color,
+    })
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {/* Icon picker */}
       <div>
-        <label className="text-xs font-medium text-fg-secondary mb-2 block">Ícone</label>
-        <div className="flex flex-wrap gap-1.5">
-          {GOAL_ICONS.map((ic) => (
+        <label className="text-xs text-fg-muted mb-2 block">Ícone</label>
+        <div className="flex flex-wrap gap-2">
+          {ICONS.map((ic) => (
             <button
-              type="button"
-              key={ic}
+              key={ic} type="button"
               onClick={() => set('icon', ic)}
-              className={`w-9 h-9 rounded-btn text-lg flex items-center justify-center transition-all cursor-pointer ${form.icon === ic ? 'bg-bg-hover ring-1 ring-border-strong scale-110' : 'bg-bg-elevated hover:bg-bg-hover'}`}
-            >
-              {ic}
-            </button>
+              className={cn('w-9 h-9 rounded-btn text-lg flex items-center justify-center transition-all cursor-pointer', form.icon === ic ? 'ring-2 ring-fg bg-bg-elevated' : 'bg-bg-elevated hover:bg-bg-hover')}
+            >{ic}</button>
           ))}
         </div>
       </div>
 
-      <Input label="Nome da meta" required placeholder="Ex: Reserva de emergência" value={form.name} onChange={(e) => set('name', e.target.value)} />
-
-      <div className="grid grid-cols-2 gap-3">
-        <Input label="Valor alvo (R$)" type="number" step="0.01" required min="1" value={form.target_amount} onChange={(e) => set('target_amount', e.target.value)} />
-        <Input label="Valor atual (R$)" type="number" step="0.01" min="0" value={form.current_amount} onChange={(e) => set('current_amount', e.target.value)} />
-      </div>
-
-      <Input label="Prazo" type="date" value={form.deadline} onChange={(e) => set('deadline', e.target.value)} />
-
-      {/* Color picker */}
-      <div>
-        <label className="text-xs font-medium text-fg-secondary mb-2 block">Cor</label>
-        <div className="flex gap-2 flex-wrap">
-          {GOAL_COLORS.map((c) => (
-            <button
-              type="button"
-              key={c}
-              onClick={() => set('color', c)}
-              className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${form.color === c ? 'border-fg scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`}
-              style={{ background: c }}
-            />
-          ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2">
+          <label className="text-xs text-fg-muted mb-1.5 block">Nome da Meta</label>
+          <input
+            className="w-full bg-bg-elevated ring-1 ring-border rounded-btn px-3 py-2 text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-fg/40 transition"
+            placeholder="Ex: Reserva de emergência"
+            value={form.name} onChange={(e) => set('name', e.target.value)} required
+          />
+        </div>
+        <div>
+          <label className="text-xs text-fg-muted mb-1.5 block">Valor Alvo (R$)</label>
+          <input
+            type="number" min="0" step="0.01"
+            className="w-full bg-bg-elevated ring-1 ring-border rounded-btn px-3 py-2 text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-fg/40 transition"
+            placeholder="10000"
+            value={form.target_amount} onChange={(e) => set('target_amount', e.target.value)} required
+          />
+        </div>
+        <div>
+          <label className="text-xs text-fg-muted mb-1.5 block">Valor Atual (R$)</label>
+          <input
+            type="number" min="0" step="0.01"
+            className="w-full bg-bg-elevated ring-1 ring-border rounded-btn px-3 py-2 text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-fg/40 transition"
+            placeholder="0"
+            value={form.current_amount} onChange={(e) => set('current_amount', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-fg-muted mb-1.5 block">Prazo (opcional)</label>
+          <input
+            type="date"
+            className="w-full bg-bg-elevated ring-1 ring-border rounded-btn px-3 py-2 text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-fg/40 transition"
+            value={form.deadline || ''} onChange={(e) => set('deadline', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-fg-muted mb-1.5 block">Cor</label>
+          <div className="flex flex-wrap gap-2">
+            {COLORS.map((c) => (
+              <button
+                key={c.id} type="button"
+                onClick={() => set('color', c.value)}
+                title={c.label}
+                className={cn('w-6 h-6 rounded-full transition-all cursor-pointer', form.color === c.value ? 'ring-2 ring-offset-2 ring-offset-bg-elevated ring-fg/60 scale-110' : 'hover:scale-105')}
+                style={{ background: c.value }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-2 pt-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-        <Button type="submit" className="flex-1">{initial ? 'Salvar' : 'Criar meta'}</Button>
+      <div className="flex gap-2 pt-1">
+        <button type="submit" className="flex-1 bg-fg text-bg text-sm font-semibold py-2 rounded-btn hover:bg-fg/90 transition cursor-pointer">
+          Salvar
+        </button>
+        <button type="button" onClick={onCancel} className="px-4 text-sm text-fg-muted bg-bg-elevated rounded-btn ring-1 ring-border hover:bg-bg-hover transition cursor-pointer">
+          Cancelar
+        </button>
       </div>
     </form>
   )
 }
 
 function DepositModal({ goal, onClose }) {
-  const { updateGoal } = useStore()
+  const updateGoal = useStore((s) => s.updateGoal)
   const [amount, setAmount] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleDeposit = (e) => {
     e.preventDefault()
-    const val = parseFloat(amount)
-    if (!val || val <= 0) return
-    updateGoal(goal.id, { current_amount: goal.current_amount + val })
+    const v = parseFloat(amount)
+    if (!v || v <= 0) return
+    updateGoal(goal.id, { current_amount: goal.current_amount + v })
     onClose()
   }
 
-  const remaining = goal.target_amount - goal.current_amount
-
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="bg-bg-elevated rounded-card p-4 flex items-center gap-3">
-        <span className="text-2xl">{goal.icon}</span>
-        <div>
-          <p className="text-sm font-medium text-fg">{goal.name}</p>
-          <p className="text-xs text-fg-muted">Faltam {formatCurrency(Math.max(0, remaining))}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.25 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-bg-surface rounded-card ring-1 ring-border p-6 w-full max-w-sm"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-2xl">{goal.icon}</span>
+          <div>
+            <p className="text-sm font-semibold text-fg">{goal.name}</p>
+            <p className="text-xs text-fg-muted">{formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}</p>
+          </div>
         </div>
-      </div>
-      <Input
-        label="Valor a depositar (R$)"
-        type="number"
-        step="0.01"
-        min="0.01"
-        required
-        autoFocus
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        placeholder="0,00"
-      />
-      <div className="flex gap-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-        <Button type="submit" variant="success" className="flex-1">Depositar</Button>
-      </div>
-    </form>
+        <form onSubmit={handleDeposit} className="flex flex-col gap-3">
+          <div>
+            <label className="text-xs text-fg-muted mb-1.5 block">Valor a depositar (R$)</label>
+            <input
+              type="number" min="0.01" step="0.01" autoFocus
+              className="w-full bg-bg-elevated ring-1 ring-border rounded-btn px-3 py-2 text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-fg/40 transition"
+              placeholder="100"
+              value={amount} onChange={(e) => setAmount(e.target.value)} required
+            />
+          </div>
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 bg-fg text-bg text-sm font-semibold py-2 rounded-btn hover:bg-fg/90 transition cursor-pointer">
+              Depositar
+            </button>
+            <button type="button" onClick={onClose} className="px-4 text-sm text-fg-muted bg-bg-elevated rounded-btn ring-1 ring-border hover:bg-bg-hover transition cursor-pointer">
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
   )
 }
 
-function GoalCard({ goal, onEdit, onDelete, onDeposit }) {
+function GoalCard({ goal, onDeposit }) {
+  const deleteGoal = useStore((s) => s.deleteGoal)
   const pct = goal.target_amount > 0 ? Math.min(100, (goal.current_amount / goal.target_amount) * 100) : 0
-  const remaining = goal.target_amount - goal.current_amount
   const done = pct >= 100
+  const remaining = Math.max(0, goal.target_amount - goal.current_amount)
 
-  const daysLeft = goal.deadline ? differenceInDays(parseISO(goal.deadline), new Date()) : null
-  const monthsLeft = daysLeft !== null ? Math.max(1, Math.ceil(daysLeft / 30)) : null
-  const monthlyNeeded = monthsLeft && remaining > 0 ? remaining / monthsLeft : 0
+  const daysLeft = goal.deadline ? Math.ceil((new Date(goal.deadline + 'T00:00:00') - new Date()) / 86400000) : null
+  const monthsLeft = daysLeft != null ? Math.max(1, Math.ceil(daysLeft / 30)) : null
+  const monthlyNeeded = monthsLeft && remaining > 0 ? remaining / monthsLeft : null
+
+  const urgencyColor = daysLeft == null ? 'text-fg-muted' : daysLeft < 0 ? 'text-danger' : daysLeft < 30 ? 'text-warning' : 'text-fg-muted'
 
   return (
-    <motion.div layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}>
-      <Card>
-        <CardContent className="pt-5">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-btn bg-bg-elevated flex items-center justify-center text-xl shrink-0">
-                {goal.icon}
-              </div>
-              <div>
-                <p className="font-medium text-fg text-sm">{goal.name}</p>
-                {goal.deadline && (
-                  <p className={`text-2xs mt-0.5 ${daysLeft !== null && daysLeft < 0 ? 'text-danger' : daysLeft !== null && daysLeft < 30 ? 'text-warning' : 'text-fg-muted'}`}>
-                    {daysLeft !== null && daysLeft < 0
-                      ? 'Prazo encerrado'
-                      : daysLeft === 0
-                      ? 'Vence hoje'
-                      : `${daysLeft}d restantes · ${format(parseISO(goal.deadline), 'MMM yyyy', { locale: ptBR })}`}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-1 items-center">
-              {done && <CheckCircle2 size={14} className="text-success mr-0.5" />}
-              <button onClick={onEdit} className="p-1.5 rounded-btn hover:bg-bg-hover text-fg-muted hover:text-fg cursor-pointer transition-colors"><Edit2 size={13} /></button>
-              <button onClick={onDelete} className="p-1.5 rounded-btn hover:bg-danger-muted text-fg-muted hover:text-danger cursor-pointer transition-colors"><Trash2 size={13} /></button>
-            </div>
-          </div>
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.3 }}
+      className="bg-bg-surface rounded-card ring-1 ring-border p-5 flex flex-col gap-4 relative group"
+    >
+      <button
+        onClick={() => deleteGoal(goal.id)}
+        className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 p-1 rounded text-fg-muted hover:text-danger transition-all cursor-pointer"
+      >
+        <Trash2 size={13} />
+      </button>
 
-          {/* Values */}
-          <div className="flex items-end justify-between mb-2">
-            <div>
-              <p className="text-2xs text-fg-muted mb-0.5">Acumulado</p>
-              <p className="text-xl font-bold tabular-nums" style={{ color: done ? '#4ade80' : goal.color }}>
-                {formatCurrency(goal.current_amount)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xs text-fg-muted mb-0.5">Meta</p>
-              <p className="text-sm font-semibold text-fg-secondary tabular-nums">{formatCurrency(goal.target_amount)}</p>
-            </div>
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-btn flex items-center justify-center text-xl shrink-0" style={{ background: goal.color + '22' }}>
+          {goal.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-fg truncate">{goal.name}</p>
+            {done && <CheckCircle2 size={14} className="text-success shrink-0" />}
           </div>
+          <p className="text-xs text-fg-muted mt-0.5">
+            {formatCurrency(goal.current_amount)} <span className="text-fg-muted/50">/</span> {formatCurrency(goal.target_amount)}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-base font-bold tabular-nums" style={{ color: done ? '#4ade80' : goal.color }}>
+            {pct.toFixed(0)}%
+          </p>
+        </div>
+      </div>
 
-          {/* Progress bar */}
-          <div className="h-1.5 bg-bg-elevated rounded-full overflow-hidden mb-3">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full rounded-full"
-              style={{ background: done ? '#4ade80' : goal.color }}
-            />
-          </div>
+      {/* Progress bar */}
+      <div className="h-1.5 bg-bg-elevated rounded-full overflow-hidden">
+        <motion.div
+          className="h-full rounded-full"
+          style={{ background: done ? '#4ade80' : goal.color }}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.6, delay: 0.1 }}
+        />
+      </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className={`text-2xs font-medium px-2 py-0.5 rounded-badge ring-1 ${done ? 'text-success bg-success-muted ring-success/20' : 'text-fg-muted bg-bg-elevated ring-border'}`}>
-                {pct.toFixed(0)}%
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {daysLeft != null && (
+            <div className="flex items-center gap-1">
+              <Clock size={11} className={urgencyColor} />
+              <span className={cn('text-2xs', urgencyColor)}>
+                {daysLeft < 0 ? 'Vencida' : daysLeft === 0 ? 'Hoje' : `${daysLeft}d`}
               </span>
-              {!done && monthlyNeeded > 0 && (
-                <span className="text-2xs text-fg-muted">{formatCurrency(monthlyNeeded)}/mês</span>
-              )}
             </div>
-            {!done && (
-              <button
-                onClick={onDeposit}
-                className="flex items-center gap-1 text-2xs font-medium px-2.5 py-1.5 rounded-btn bg-bg-elevated hover:bg-bg-hover text-fg-secondary hover:text-fg ring-1 ring-border transition-all cursor-pointer"
-              >
-                <PlusCircle size={11} /> Depositar
-              </button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          )}
+          {monthlyNeeded && !done && (
+            <div className="flex items-center gap-1">
+              <TrendingUp size={11} className="text-fg-muted" />
+              <span className="text-2xs text-fg-muted">{formatCurrency(monthlyNeeded)}/mês</span>
+            </div>
+          )}
+        </div>
+        {!done && (
+          <button
+            onClick={() => onDeposit(goal)}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-btn ring-1 ring-border bg-bg-elevated hover:bg-bg-hover text-fg-secondary hover:text-fg transition cursor-pointer"
+          >
+            <Plus size={11} />
+            Depositar
+          </button>
+        )}
+      </div>
     </motion.div>
   )
 }
 
 export default function Goals() {
-  const { goals, deleteGoal } = useStore()
-  const [modal, setModal] = useState(null) // null | 'new' | goal obj | { deposit: goal }
+  const { goals, addGoal } = useStore((s) => ({ goals: s.goals, addGoal: s.addGoal }))
+  const [showForm, setShowForm] = useState(false)
   const [depositGoal, setDepositGoal] = useState(null)
 
   const sorted = useMemo(() => {
-    return [...goals].sort((a, b) => {
-      const pctA = a.target_amount > 0 ? a.current_amount / a.target_amount : 0
-      const pctB = b.target_amount > 0 ? b.current_amount / b.target_amount : 0
-      // Completed goals go to the end
-      if (pctA >= 1 && pctB < 1) return 1
-      if (pctB >= 1 && pctA < 1) return -1
-      return pctB - pctA
-    })
+    const active = goals.filter((g) => g.current_amount < g.target_amount)
+    const done = goals.filter((g) => g.current_amount >= g.target_amount)
+    active.sort((a, b) => (b.current_amount / b.target_amount) - (a.current_amount / a.target_amount))
+    return [...active, ...done]
   }, [goals])
 
   const totalSaved = goals.reduce((s, g) => s + g.current_amount, 0)
   const totalTarget = goals.reduce((s, g) => s + g.target_amount, 0)
-  const completed = goals.filter((g) => g.target_amount > 0 && g.current_amount >= g.target_amount).length
+  const completedCount = goals.filter((g) => g.current_amount >= g.target_amount).length
+
+  const handleSave = (data) => {
+    addGoal(data)
+    setShowForm(false)
+  }
 
   return (
-    <div className="p-4 lg:p-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-lg font-semibold text-fg">Metas</h1>
-        <Button onClick={() => setModal('new')} size="sm"><Plus size={16} /> Nova meta</Button>
+    <div className="p-5 lg:p-7 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2.5">
+          <Target size={18} className="text-fg-secondary" />
+          <h1 className="text-lg font-semibold text-fg">Metas Financeiras</h1>
+        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex items-center gap-1.5 bg-fg text-bg text-xs font-semibold px-3.5 py-2 rounded-btn hover:bg-fg/90 transition cursor-pointer"
+        >
+          <Plus size={13} />
+          Nova Meta
+        </button>
       </div>
 
-      {/* Summary strip */}
+      {/* Summary */}
       {goals.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-bg-surface ring-1 ring-border rounded-card p-3.5">
-            <p className="text-2xs text-fg-muted font-medium mb-1">Acumulado</p>
-            <p className="text-base font-bold text-fg tabular-nums">{formatCurrency(totalSaved)}</p>
-          </div>
-          <div className="bg-bg-surface ring-1 ring-border rounded-card p-3.5">
-            <p className="text-2xs text-fg-muted font-medium mb-1">Total de metas</p>
-            <p className="text-base font-bold text-fg tabular-nums">{formatCurrency(totalTarget)}</p>
-          </div>
-          <div className="bg-bg-surface ring-1 ring-border rounded-card p-3.5">
-            <p className="text-2xs text-fg-muted font-medium mb-1">Concluídas</p>
-            <p className="text-base font-bold text-success tabular-nums">{completed}/{goals.length}</p>
-          </div>
+          {[
+            { label: 'Total Poupado', value: formatCurrency(totalSaved), icon: PiggyBank },
+            { label: 'Total Alvo', value: formatCurrency(totalTarget), icon: Target },
+            { label: 'Concluídas', value: `${completedCount} / ${goals.length}`, icon: CheckCircle2 },
+          ].map(({ label, value, icon: Icon }) => (
+            <div key={label} className="bg-bg-surface rounded-card ring-1 ring-border p-4">
+              <p className="text-2xs text-fg-muted mb-1">{label}</p>
+              <p className="text-base font-bold text-fg tabular-nums">{value}</p>
+            </div>
+          ))}
         </div>
       )}
 
-      {goals.length === 0 ? (
-        <div className="text-center py-24 text-fg-muted">
-          <Target size={40} className="mx-auto mb-4 text-fg-disabled" />
-          <p className="text-sm font-medium text-fg-secondary">Nenhuma meta criada</p>
-          <p className="text-xs mt-1 mb-5">Defina objetivos financeiros e acompanhe seu progresso</p>
-          <Button onClick={() => setModal('new')}><Plus size={16} /> Criar primeira meta</Button>
+      {/* Form */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            transition={{ ease: [0.16, 1, 0.3, 1], duration: 0.3 }}
+            className="overflow-hidden mb-5"
+          >
+            <div className="bg-bg-surface rounded-card ring-1 ring-border p-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-semibold text-fg">Nova Meta</p>
+                <button onClick={() => setShowForm(false)} className="p-1 text-fg-muted hover:text-fg cursor-pointer"><X size={14} /></button>
+              </div>
+              <GoalForm onSave={handleSave} onCancel={() => setShowForm(false)} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Goal cards */}
+      {sorted.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-bg-elevated flex items-center justify-center text-3xl">🎯</div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-fg mb-1">Nenhuma meta criada</p>
+            <p className="text-xs text-fg-muted max-w-xs">Defina objetivos financeiros para manter o foco e a motivação.</p>
+          </div>
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-btn ring-1 ring-border bg-bg-elevated hover:bg-bg-hover text-fg-secondary hover:text-fg transition cursor-pointer"
+          >
+            <Plus size={14} />
+            Criar primeira meta
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <AnimatePresence>
-            {sorted.map((goal) => (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                onEdit={() => setModal(goal)}
-                onDelete={() => deleteGoal(goal.id)}
-                onDeposit={() => setDepositGoal(goal)}
-              />
+            {sorted.map((g) => (
+              <GoalCard key={g.id} goal={g} onDeposit={setDepositGoal} />
             ))}
           </AnimatePresence>
-
-          <motion.button
-            layout
-            onClick={() => setModal('new')}
-            className="border border-dashed border-border rounded-card p-5 flex flex-col items-center justify-center gap-2 text-fg-muted hover:text-fg hover:border-border-strong hover:bg-bg-elevated transition-all cursor-pointer min-h-[200px]"
-          >
-            <Plus size={24} />
-            <span className="text-sm font-medium">Nova meta</span>
-          </motion.button>
-        </div>
+        </motion.div>
       )}
 
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nova Meta' : 'Editar Meta'}>
-        <GoalForm onClose={() => setModal(null)} initial={modal === 'new' ? null : modal} />
-      </Modal>
-
-      <Modal open={!!depositGoal} onClose={() => setDepositGoal(null)} title="Depositar na meta" size="sm">
+      {/* Deposit modal */}
+      <AnimatePresence>
         {depositGoal && <DepositModal goal={depositGoal} onClose={() => setDepositGoal(null)} />}
-      </Modal>
+      </AnimatePresence>
     </div>
   )
 }

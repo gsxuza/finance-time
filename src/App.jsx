@@ -9,6 +9,7 @@ import Accounts from '@/pages/Accounts'
 import Budgets from '@/pages/Budgets'
 import Goals from '@/pages/Goals'
 import CashFlow from '@/pages/CashFlow'
+import HealthScore from '@/pages/HealthScore'
 import OpenFinance from '@/pages/OpenFinance'
 import AIInsights from '@/pages/AIInsights'
 import Reports from '@/pages/Reports'
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/budgets" element={<Budgets />} />
             <Route path="/goals" element={<Goals />} />
             <Route path="/cashflow" element={<CashFlow />} />
+            <Route path="/health-score" element={<HealthScore />} />
             <Route path="/open-finance" element={<OpenFinance />} />
             <Route path="/ai-insights" element={<AIInsights />} />
             <Route path="/reports" element={<Reports />} />
