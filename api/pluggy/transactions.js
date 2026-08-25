@@ -31,14 +31,24 @@ export default async function handler(req) {
   try {
     const apiKey = await getApiKey()
 
-    const params = new URLSearchParams({ accountId, pageSize })
-    if (from) params.set('from', from)
-    if (to) params.set('to', to)
+    // Try with date range first; if Pluggy rejects it, fall back to no date filter
+    const tryFetch = async (includeDate) => {
+      const params = new URLSearchParams({ accountId, pageSize })
+      if (includeDate && from) params.set('from', from)
+      if (includeDate && to) params.set('to', to)
+      const res = await fetch(`https://api.pluggy.ai/transactions?${params}`, {
+        headers: { 'X-API-KEY': apiKey },
+      })
+      const data = await res.json()
+      return { res, data }
+    }
 
-    const res = await fetch(`https://api.pluggy.ai/transactions?${params}`, {
-      headers: { 'X-API-KEY': apiKey },
-    })
-    const data = await res.json()
+    let { res, data } = await tryFetch(true)
+
+    // If date params caused a validation error, retry without them
+    if (!res.ok && (data?.message || data?.error || '').toLowerCase().includes('pattern')) {
+      ;({ res, data } = await tryFetch(false))
+    }
 
     return new Response(JSON.stringify(data), {
       status: res.status,

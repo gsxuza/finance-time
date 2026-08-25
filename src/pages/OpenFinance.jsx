@@ -22,23 +22,23 @@ async function fetchConnectToken(itemId = null) {
 async function fetchItemAccounts(itemId) {
   const res = await fetch(`/api/pluggy/accounts?itemId=${itemId}`)
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Erro ao buscar contas')
+  if (!res.ok) throw new Error(data.message || data.error || `Pluggy error ${res.status}`)
   return data.results || []
 }
 
 async function fetchItem(itemId) {
   const res = await fetch(`/api/pluggy/items/${itemId}`)
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Erro ao buscar item')
+  if (!res.ok) throw new Error(data.message || data.error || `Pluggy error ${res.status}`)
   return data
 }
 
 async function fetchPluggyTransactions(accountId, from, to) {
-  const params = new URLSearchParams({ accountId, pageSize: '200', from, to })
+  const params = new URLSearchParams({ accountId, pageSize: '100', from, to })
   const res = await fetch(`/api/pluggy/transactions?${params}`)
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Erro ao buscar transações')
-  return data.results || []
+  if (!res.ok) throw new Error(data.message || data.error || `Pluggy error ${res.status}`)
+  return data.results || data.transactions || []
 }
 
 function mapAccountType(pluggyType) {
