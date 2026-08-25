@@ -10,6 +10,38 @@ const QUICK_ACTIONS = [
   'Quais categorias ultrapassaram o orçamento?',
 ]
 
+// The model is told to avoid markdown, but it still slips **bold** and #
+// headings in. Render those rather than letting the raw syntax reach the screen.
+function renderInline(text) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length > 4
+      ? <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>
+      : part
+  )
+}
+
+function FormattedText({ text }) {
+  const lines = String(text || '').split('\n')
+
+  return lines.map((raw, i) => {
+    const line = raw.replace(/^#{1,6}\s*/, '').trimEnd()
+
+    if (!line.trim()) return <div key={i} className="h-2" />
+
+    const bullet = line.match(/^\s*[-•*]\s+(.*)$/)
+    if (bullet) {
+      return (
+        <div key={i} className="flex gap-2 pl-1">
+          <span className="text-violet-400 shrink-0">•</span>
+          <span>{renderInline(bullet[1])}</span>
+        </div>
+      )
+    }
+
+    return <div key={i}>{renderInline(line)}</div>
+  })
+}
+
 function Message({ msg }) {
   const isUser = msg.role === 'user'
   return (
@@ -17,8 +49,8 @@ function Message({ msg }) {
       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isUser ? 'bg-blue-500' : 'bg-gradient-to-br from-violet-500 to-blue-500'}`}>
         {isUser ? <User size={14} className="text-white" /> : <Bot size={14} className="text-white" />}
       </div>
-      <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${isUser ? 'bg-blue-500 text-white rounded-tr-sm' : 'bg-white border border-slate-100 text-slate-700 rounded-tl-sm shadow-sm'}`}>
-        {msg.content}
+      <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed space-y-0.5 ${isUser ? 'bg-blue-500 text-white rounded-tr-sm' : 'bg-white border border-slate-100 text-slate-700 rounded-tl-sm shadow-sm'}`}>
+        {isUser ? msg.content : <FormattedText text={msg.content} />}
       </div>
     </div>
   )

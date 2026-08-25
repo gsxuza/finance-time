@@ -42,6 +42,14 @@ export function generateLinkCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase()
 }
 
+// Current month as YYYY-MM in the user's local time. Transaction dates are local
+// calendar dates, so deriving this from toISOString() (which is UTC) selects the
+// wrong month for a few hours around every month boundary.
+export function currentMonth() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 export function calcInterest(amount, ratePercent, daysLate) {
   if (daysLate <= 0) return amount
   return amount + amount * (ratePercent / 100) * daysLate

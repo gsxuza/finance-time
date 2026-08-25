@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { generateId, DEFAULT_CATEGORIES } from '@/lib/utils'
+import { generateId, currentMonth, DEFAULT_CATEGORIES } from '@/lib/utils'
 
 const initialState = {
   accounts: [],
@@ -85,17 +85,17 @@ export const useStore = create(
       },
       getMonthlyIncome: () => {
         const { transactions } = get()
-        const m = new Date().toISOString().slice(0, 7)
+        const m = currentMonth()
         return transactions
           .filter((t) => t.type === 'income' && t.date?.startsWith(m))
-          .reduce((sum, t) => sum + t.amount, 0)
+          .reduce((sum, t) => sum + (t.amount || 0), 0)
       },
       getMonthlyExpenses: () => {
         const { transactions } = get()
-        const m = new Date().toISOString().slice(0, 7)
+        const m = currentMonth()
         return transactions
           .filter((t) => t.type === 'expense' && t.date?.startsWith(m))
-          .reduce((sum, t) => sum + t.amount, 0)
+          .reduce((sum, t) => sum + (t.amount || 0), 0)
       },
       getBudgetSpent: (category, period, startDate) => {
         const { transactions } = get()
