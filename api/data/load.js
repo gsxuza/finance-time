@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 
-export const config = { runtime: 'edge' }
+export const config = { runtime: 'nodejs', maxDuration: 10 }
 
 export default async function handler(req) {
   if (req.method !== 'POST') {

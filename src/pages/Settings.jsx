@@ -3,7 +3,7 @@ import { Settings2, Bell, Shield, RefreshCw, LogOut, Cloud, Copy, Check } from '
 import { useStore } from '@/store/useStore'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { getSyncUserId } from '@/hooks/useNeonSync'
+import { getSyncUserId, setSyncUserId, getSyncStatus, forceSaveToCloud } from '@/hooks/useNeonSync'
 
 function Toggle({ checked, onChange, label, desc }) {
   return (
@@ -43,10 +43,15 @@ function SyncCodeSection() {
   const [userId, setUserId] = useState('')
   const [inputCode, setInputCode] = useState('')
   const [copied, setCopied] = useState(false)
-  const [syncMsg, setSyncMsg] = useState('')
+  const [msg, setMsg] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [syncStatus, setSyncStatus] = useState(null)
 
   useEffect(() => {
     setUserId(getSyncUserId() || '')
+    setSyncStatus(getSyncStatus())
+    const id = setInterval(() => setSyncStatus(getSyncStatus()), 3000)
+    return () => clearInterval(id)
   }, [])
 
   function handleCopy() {
@@ -59,18 +64,36 @@ function SyncCodeSection() {
 
   function handleApplyCode() {
     const code = inputCode.trim()
-    if (!code || code.length < 8) { setSyncMsg('Código inválido.'); return }
-    localStorage.setItem('finance-time-uid', code)
-    setSyncMsg('Código aplicado! Recarregando...')
+    if (!code || code.length < 8) { setMsg('Código inválido.'); return }
+    setSyncUserId(code)
+    setMsg('Código aplicado! Recarregando...')
     setTimeout(() => window.location.reload(), 1200)
   }
 
+  async function handleForceSave() {
+    setSaving(true)
+    setMsg('')
+    try {
+      await forceSaveToCloud()
+      setMsg('✅ Dados enviados para a nuvem com sucesso!')
+    } catch (err) {
+      setMsg(`⚠️ Erro: ${err.message}`)
+    } finally {
+      setSaving(false)
+      setTimeout(() => setMsg(''), 6000)
+    }
+  }
+
+  const statusColor = syncStatus?.phase === 'ok' ? 'text-green-600' : syncStatus?.phase === 'error' ? 'text-red-500' : 'text-slate-400'
+  const statusLabel = syncStatus?.phase === 'ok' ? '● Sincronizado' : syncStatus?.phase === 'error' ? `● Erro: ${syncStatus.message}` : syncStatus?.phase === 'loading' ? '● Carregando...' : '● Aguardando'
+
   return (
     <Section icon={Cloud} title="Sincronização entre dispositivos">
+      <div className={`text-xs mb-3 font-medium ${statusColor}`}>{statusLabel}</div>
       <p className="text-xs text-slate-500 mb-3">
         Use o código abaixo para sincronizar seus dados em outros dispositivos. Cole o código no outro dispositivo e clique em "Aplicar".
       </p>
-      <div className="mb-4">
+      <div className="mb-3">
         <label className="text-xs font-medium text-slate-600 mb-1 block">Seu código de sync</label>
         <div className="flex items-center gap-2">
           <code className="flex-1 px-3 py-2 bg-slate-100 rounded-xl text-xs text-slate-700 truncate font-mono select-all">
@@ -84,6 +107,16 @@ function SyncCodeSection() {
             {copied ? 'Copiado' : 'Copiar'}
           </button>
         </div>
+      </div>
+      <div className="mb-3">
+        <button
+          onClick={handleForceSave}
+          disabled={saving}
+          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer disabled:opacity-50"
+        >
+          <RefreshCw size={12} className={saving ? 'animate-spin' : ''} />
+          {saving ? 'Enviando...' : 'Forçar sincronização agora'}
+        </button>
       </div>
       <div>
         <label className="text-xs font-medium text-slate-600 mb-1 block">Aplicar código de outro dispositivo</label>
@@ -102,7 +135,7 @@ function SyncCodeSection() {
             Aplicar
           </button>
         </div>
-        {syncMsg && <p className="text-xs mt-1.5 text-blue-600">{syncMsg}</p>}
+        {msg && <p className="text-xs mt-1.5 text-blue-600">{msg}</p>}
       </div>
     </Section>
   )

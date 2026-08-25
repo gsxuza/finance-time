@@ -1,15 +1,32 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '@/store/useStore'
 
-const STORAGE_KEY = 'finance-time-uid'
+const UID_KEY = 'finance-time-uid'
+const STATUS_KEY = 'finance-time-sync-status'
 
-function getOrCreateUserId() {
-  let uid = localStorage.getItem(STORAGE_KEY)
+export function getOrCreateUserId() {
+  let uid = localStorage.getItem(UID_KEY)
   if (!uid) {
     uid = crypto.randomUUID()
-    localStorage.setItem(STORAGE_KEY, uid)
+    localStorage.setItem(UID_KEY, uid)
   }
   return uid
+}
+
+export function getSyncUserId() {
+  return localStorage.getItem(UID_KEY) || null
+}
+
+export function setSyncUserId(uid) {
+  localStorage.setItem(UID_KEY, uid)
+}
+
+export function getSyncStatus() {
+  try { return JSON.parse(localStorage.getItem(STATUS_KEY) || 'null') } catch { return null }
+}
+
+function setSyncStatus(s) {
+  localStorage.setItem(STATUS_KEY, JSON.stringify(s))
 }
 
 const SYNC_KEYS = ['accounts', 'transactions', 'budgets', 'categories', 'bankConnections', 'settings']
@@ -29,44 +46,51 @@ export function useNeonSync() {
     const userId = getOrCreateUserId()
     userIdRef.current = userId
 
-    // Load from cloud once on mount
+    setSyncStatus({ phase: 'loading', ts: Date.now() })
+
     fetch('/api/data/load', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) return r.json().then((d) => { throw new Error(d.error || `HTTP ${r.status}`) })
+        return r.json()
+      })
       .then((d) => {
         if (d.state && typeof d.state === 'object') {
-          useStore.setState((current) => {
-            // Merge: cloud wins unless local has newer data
-            // Simple strategy: cloud state replaces local if cloud has more transactions
-            const cloudTxCount = d.state.transactions?.length ?? 0
-            const localTxCount = current.transactions?.length ?? 0
-            if (cloudTxCount >= localTxCount) {
-              return { ...d.state }
-            }
-            return {}
-          })
+          const cloudTxCount = d.state.transactions?.length ?? 0
+          const localTxCount = useStore.getState().transactions?.length ?? 0
+          if (cloudTxCount > localTxCount) {
+            useStore.setState({ ...d.state })
+          }
         }
+        setSyncStatus({ phase: 'ok', ts: Date.now() })
         loadedRef.current = true
       })
-      .catch(() => {
+      .catch((err) => {
+        setSyncStatus({ phase: 'error', message: err.message, ts: Date.now() })
         loadedRef.current = true
       })
 
-    // Subscribe to store changes and debounce-save to cloud
     const unsub = useStore.subscribe((state) => {
       if (!loadedRef.current) return
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => {
-        const userId = userIdRef.current
-        if (!userId) return
+        const uid = userIdRef.current
+        if (!uid) return
         fetch('/api/data/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, state: pickState(state) }),
-        }).catch(() => {})
+          body: JSON.stringify({ userId: uid, state: pickState(state) }),
+        })
+          .then((r) => {
+            if (!r.ok) return r.json().then((d) => { throw new Error(d.error || `HTTP ${r.status}`) })
+            setSyncStatus({ phase: 'ok', ts: Date.now() })
+          })
+          .catch((err) => {
+            setSyncStatus({ phase: 'error', message: err.message, ts: Date.now() })
+          })
       }, 2000)
     })
 
@@ -75,10 +99,17 @@ export function useNeonSync() {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
   }, [])
-
-  return userIdRef
 }
 
-export function getSyncUserId() {
-  return localStorage.getItem(STORAGE_KEY) || null
+export function forceSaveToCloud() {
+  const uid = getSyncUserId()
+  if (!uid) return Promise.reject(new Error('Sem código de sync'))
+  return fetch('/api/data/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: uid, state: pickState(useStore.getState()) }),
+  }).then((r) => {
+    if (!r.ok) return r.json().then((d) => { throw new Error(d.error || `HTTP ${r.status}`) })
+    setSyncStatus({ phase: 'ok', ts: Date.now() })
+  })
 }
