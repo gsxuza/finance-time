@@ -50,6 +50,31 @@ export const useStore = create(
       updateBankConnection: (id, data) => set((s) => ({ bankConnections: s.bankConnections.map((bc) => (bc.id === id ? { ...bc, ...data } : bc)) })),
       deleteBankConnection: (id) => set((s) => ({ bankConnections: s.bankConnections.filter((bc) => bc.id !== id) })),
 
+      // Import transactions from Pluggy (deduplicates by pluggy_id, updates account balances)
+      importPluggySync: ({ transactions: newTxs, accountUpdates }) => set((s) => {
+        const existingPluggyIds = new Set(s.transactions.filter((t) => t.pluggy_id).map((t) => t.pluggy_id))
+        const toAdd = newTxs.filter((t) => !existingPluggyIds.has(t.pluggy_id))
+
+        let accounts = [...s.accounts]
+        // Apply account balance updates from Pluggy
+        for (const upd of accountUpdates) {
+          const existing = accounts.find((a) => a.pluggy_account_id === upd.pluggy_account_id)
+          if (existing) {
+            accounts = accounts.map((a) => a.pluggy_account_id === upd.pluggy_account_id ? { ...a, balance: upd.balance, is_active: true } : a)
+          } else {
+            accounts = [...accounts, { id: generateId(), pluggy_account_id: upd.pluggy_account_id, name: upd.name, type: upd.type, balance: upd.balance, icon: upd.icon, is_active: true, currency: 'BRL' }]
+          }
+        }
+
+        // Now link each new transaction to the correct local account_id
+        const finalTxs = toAdd.map((t) => {
+          const acct = accounts.find((a) => a.pluggy_account_id === t.pluggy_account_id)
+          return { id: generateId(), ...t, account_id: acct?.id || '' }
+        })
+
+        return { transactions: [...s.transactions, ...finalTxs], accounts }
+      }),
+
       // Settings
       updateSettings: (data) => set((s) => ({ settings: { ...s.settings, ...data } })),
 

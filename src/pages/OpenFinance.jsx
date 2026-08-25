@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { format, differenceInDays, parseISO } from 'date-fns'
+import { format, differenceInDays, parseISO, subMonths } from 'date-fns'
 import { Plus, RefreshCw, Unlink, AlertTriangle, X, ExternalLink, Loader2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { formatCurrency } from '@/lib/utils'
@@ -110,13 +110,84 @@ function ConnectionCard({ bc, onSync, onReconnect, onRevoke, onDelete, isSyncing
   )
 }
 
+function autoCategory(description = '') {
+  const d = description.toLowerCase()
+  if (d.includes('supermercado') || d.includes('mercado') || d.includes('carrefour') || d.includes('pao de acucar')) return 'Supermercado'
+  if (d.includes('restaurante') || d.includes('lanchonete') || d.includes('hamburger') || d.includes('pizza') || d.includes('ifood') || d.includes('rappi')) return 'Restaurante'
+  if (d.includes('uber') || d.includes('99') || d.includes('combustivel') || d.includes('gasolina') || d.includes('onibus') || d.includes('metro')) return 'Transporte'
+  if (d.includes('aluguel') || d.includes('condominio') || d.includes('iptu')) return 'Moradia'
+  if (d.includes('farmacia') || d.includes('medico') || d.includes('hospital') || d.includes('plano de saude') || d.includes('unimed')) return 'Saúde'
+  if (d.includes('netflix') || d.includes('spotify') || d.includes('cinema') || d.includes('amazon prime') || d.includes('youtube')) return 'Lazer'
+  if (d.includes('curso') || d.includes('escola') || d.includes('faculdade') || d.includes('udemy') || d.includes('mensalidade')) return 'Educação'
+  if (d.includes('salario') || d.includes('salário') || d.includes('folha')) return 'Salário'
+  if (d.includes('freelance') || d.includes('projeto') || d.includes('servico')) return 'Freelance'
+  if (d.includes('invest') || d.includes('renda fixa') || d.includes('cdb') || d.includes('tesouro')) return 'Investimentos'
+  if (d.includes('roupa') || d.includes('calcado') || d.includes('vestuario') || d.includes('renner') || d.includes('riachuelo')) return 'Roupas'
+  if (d.includes('celular') || d.includes('internet') || d.includes('tim') || d.includes('claro') || d.includes('vivo')) return 'Tecnologia'
+  return 'Outros'
+}
+
+function mapPluggyType(pluggyAccountType) {
+  return { BANK: 'checking', CREDIT: 'credit_card', SAVING: 'savings', INVESTMENT: 'investment' }[pluggyAccountType] || 'checking'
+}
+
+function accountIcon(type) {
+  return { checking: '🏦', savings: '🐷', credit_card: '💳', investment: '📈' }[type] || '🏦'
+}
+
+async function fetchPluggyTransactions(accountId, from, to) {
+  const params = new URLSearchParams({ accountId, pageSize: '200', from, to })
+  const res = await fetch(`/api/pluggy/transactions?${params}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Erro ao buscar transações')
+  return data.results || []
+}
+
+async function buildSyncPayload(pluggyAccounts) {
+  const from = format(subMonths(new Date(), 3), 'yyyy-MM-dd')
+  const to = format(new Date(), 'yyyy-MM-dd')
+
+  const accountUpdates = pluggyAccounts.map((a) => ({
+    pluggy_account_id: a.id,
+    name: a.name,
+    type: mapPluggyType(a.type),
+    balance: a.balance ?? 0,
+    icon: accountIcon(mapPluggyType(a.type)),
+  }))
+
+  const allTxs = []
+  await Promise.all(pluggyAccounts.map(async (a) => {
+    try {
+      const txs = await fetchPluggyTransactions(a.id, from, to)
+      for (const t of txs) {
+        const isExpense = t.type === 'DEBIT'
+        const rawDesc = t.description || t.merchant?.name || t.descriptionRaw || ''
+        allTxs.push({
+          pluggy_id: t.id,
+          pluggy_account_id: a.id,
+          date: t.date?.slice(0, 10) || to,
+          description: rawDesc,
+          amount: Math.abs(t.amount ?? 0),
+          type: isExpense ? 'expense' : 'income',
+          category: autoCategory(rawDesc),
+        })
+      }
+    } catch (e) {
+      console.warn('Failed to fetch txs for account', a.id, e)
+    }
+  }))
+
+  return { transactions: allTxs, accountUpdates }
+}
+
 export default function OpenFinance() {
-  const { bankConnections, addBankConnection, updateBankConnection, deleteBankConnection } = useStore()
+  const { bankConnections, addBankConnection, updateBankConnection, deleteBankConnection, importPluggySync } = useStore()
   const scriptReady = usePluggyScript()
   const instanceRef = useRef(null)
   const [syncing, setSyncing] = useState(null)
   const [connecting, setConnecting] = useState(false)
   const [connectError, setConnectError] = useState(null)
+  const [syncInfo, setSyncInfo] = useState(null)
 
   const openWidget = useCallback(async (itemId = null) => {
     if (!scriptReady) return
@@ -138,6 +209,9 @@ export default function OpenFinance() {
             const connector = item.connector || {}
             const mainAccount = accounts[0] || {}
             const existing = bankConnections.find((bc) => bc.pluggy_item_id === id)
+            const pluggyAccounts = accounts.map((a) => ({
+              id: a.id, name: a.name, type: a.type, balance: a.balance, number: a.number, currencyCode: a.currencyCode,
+            }))
             const connectionData = {
               bank_name: connector.name || 'Banco',
               bank_code: String(connector.id || ''),
@@ -149,20 +223,16 @@ export default function OpenFinance() {
               balance: mainAccount.balance ?? 0,
               auto_sync: true,
               pluggy_item_id: id,
-              pluggy_accounts: accounts.map((a) => ({
-                id: a.id,
-                name: a.name,
-                type: mapAccountType(a.type),
-                balance: a.balance,
-                number: a.number,
-                currencyCode: a.currencyCode,
-              })),
+              pluggy_accounts: pluggyAccounts,
             }
             if (existing) {
               updateBankConnection(existing.id, connectionData)
             } else {
               addBankConnection(connectionData)
             }
+            // Sync transactions and accounts into main store
+            const payload = await buildSyncPayload(pluggyAccounts)
+            importPluggySync(payload)
           } catch (err) {
             console.error('Error fetching Pluggy data:', err)
             addBankConnection({
@@ -204,14 +274,19 @@ export default function OpenFinance() {
         fetchItemAccounts(bc.pluggy_item_id),
       ])
       const mainAccount = accounts[0] || {}
+      const pluggyAccounts = accounts.map((a) => ({
+        id: a.id, name: a.name, type: a.type, balance: a.balance, number: a.number,
+      }))
       updateBankConnection(bc.id, {
         status: item.status === 'UPDATED' ? 'connected' : item.status === 'OUTDATED' ? 'expired' : 'error',
         balance: mainAccount.balance ?? bc.balance,
         last_sync: new Date().toISOString(),
-        pluggy_accounts: accounts.map((a) => ({
-          id: a.id, name: a.name, type: mapAccountType(a.type), balance: a.balance, number: a.number,
-        })),
+        pluggy_accounts: pluggyAccounts,
       })
+      const payload = await buildSyncPayload(pluggyAccounts)
+      importPluggySync(payload)
+      setSyncInfo(`${payload.transactions.length} transações buscadas (novas serão adicionadas automaticamente)`)
+      setTimeout(() => setSyncInfo(null), 5000)
     } catch (err) {
       console.error('Sync error:', err)
     } finally {
@@ -247,6 +322,13 @@ export default function OpenFinance() {
           </div>
         </div>
       </div>
+
+      {syncInfo && (
+        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-5 flex items-center gap-3">
+          <span className="text-emerald-600 text-lg">✅</span>
+          <p className="text-sm text-emerald-700">{syncInfo}</p>
+        </div>
+      )}
 
       {connectError && (
         <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-5 flex items-start gap-3">
