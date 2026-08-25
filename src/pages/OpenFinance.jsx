@@ -3,7 +3,7 @@ import { format, differenceInDays, parseISO, subMonths } from 'date-fns'
 import { Plus, RefreshCw, Unlink, AlertTriangle, X, ExternalLink, Loader2 } from 'lucide-react'
 import { PluggyConnect } from 'react-pluggy-connect'
 import { useStore } from '@/store/useStore'
-import { formatCurrency, isCardPayment } from '@/lib/utils'
+import { formatCurrency, detectTransfer } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
@@ -132,7 +132,12 @@ async function buildSyncPayload(pluggyAccounts) {
         // accounts: it leaves the checking account and settles the card. Keep
         // both entries (the accounts must mirror the bank) but flag them so
         // they don't get counted as spending on top of the card purchases.
-        const isTransfer = isCardPayment(rawDesc, { onCard })
+        // Pluggy's own category decides this; the description is the fallback.
+        const isTransfer = detectTransfer({
+          categoryId: t.categoryId,
+          description: rawDesc,
+          onCard,
+        })
 
         allTxs.push({
           pluggy_id: t.id,
@@ -143,6 +148,9 @@ async function buildSyncPayload(pluggyAccounts) {
           type: isExpense ? 'expense' : 'income',
           category: isTransfer ? 'Pagamento de fatura' : autoCategory(rawDesc),
           is_transfer: isTransfer,
+          // Kept so a later sync can re-derive this without guessing
+          pluggy_category: t.category || null,
+          pluggy_category_id: t.categoryId || null,
         })
       }
     } catch (e) {

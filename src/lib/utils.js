@@ -58,7 +58,25 @@ function normalize(s = '') {
 // leaves the checking account and settles the card. The purchases behind it were
 // already counted as expenses on the card, so counting the payment again would
 // double the month's spending.
+//
+// Pluggy categorizes transactions itself, which is far more reliable than
+// reading the description. Two of its categories are movements between the
+// user's own money rather than real spending:
+//   05100000  Credit card payment  (settling the card bill)
+//   04*       Same person transfer (own-account CASH / PIX / TED)
+// Note 05090000 "Third party transfers" is NOT one of these — money going to
+// someone else is a genuine expense.
+const PLUGGY_CREDIT_CARD_PAYMENT = '05100000'
+const PLUGGY_SAME_PERSON_TRANSFER_PREFIX = '04'
+
+export function isPluggyTransferCategory(categoryId) {
+  const id = String(categoryId || '')
+  if (!id) return false
+  return id === PLUGGY_CREDIT_CARD_PAYMENT || id.startsWith(PLUGGY_SAME_PERSON_TRANSFER_PREFIX)
+}
+
 // Descriptions are normalized (lowercased, accents stripped) before matching.
+// Only a fallback for when Pluggy did not categorize the transaction.
 const CARD_PAYMENT_PATTERNS = [
   /\bp(agamento|agto|gto|ag)?\.?\s*(de\s+|da\s+)?fatura/,
   /fatura\s*(do\s+)?cartao/,
@@ -80,8 +98,10 @@ export function isCardPayment(description = '', { onCard = false } = {}) {
   return onCard && CARD_SIDE_PAYMENT_PATTERNS.some((re) => re.test(d))
 }
 
-export function countsAsFlow(t) {
-  return !t?.is_transfer
+// Pluggy's category decides when it has one; the description is the fallback.
+export function detectTransfer({ categoryId, description, onCard = false }) {
+  if (categoryId) return isPluggyTransferCategory(categoryId)
+  return isCardPayment(description, { onCard })
 }
 
 // Backfills is_transfer on transactions imported before card payments were
@@ -96,6 +116,12 @@ export function markTransfers(transactions = [], accounts = []) {
     const onCard = cardAccountIds.has(t.account_id)
     return { ...t, is_transfer: isCardPayment(t.description || '', { onCard }) }
   })
+}
+
+// True when a transaction represents real money entering or leaving the user's
+// finances, as opposed to a movement between their own accounts.
+export function countsAsFlow(t) {
+  return !t?.is_transfer
 }
 
 export function sumFlow(transactions, type, monthPrefix) {

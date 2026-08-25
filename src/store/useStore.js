@@ -52,8 +52,27 @@ export const useStore = create(
 
       // Import transactions from Pluggy (deduplicates by pluggy_id, updates account balances)
       importPluggySync: ({ transactions: newTxs, accountUpdates }) => set((s) => {
+        const incomingById = new Map(newTxs.filter((t) => t.pluggy_id).map((t) => [t.pluggy_id, t]))
         const existingPluggyIds = new Set(s.transactions.filter((t) => t.pluggy_id).map((t) => t.pluggy_id))
         const toAdd = newTxs.filter((t) => !existingPluggyIds.has(t.pluggy_id))
+
+        // Re-classify transactions already stored. Without this a re-sync could
+        // never repair them: they were imported before Pluggy's category was
+        // read, so a wrongly counted card payment would stay wrong forever.
+        // Only the classification is refreshed — amount, date, description and
+        // any category the user edited are left alone.
+        const existing = s.transactions.map((t) => {
+          const fresh = t.pluggy_id && incomingById.get(t.pluggy_id)
+          if (!fresh) return t
+          if (t.is_transfer === fresh.is_transfer && t.pluggy_category_id === fresh.pluggy_category_id) return t
+          return {
+            ...t,
+            is_transfer: fresh.is_transfer,
+            pluggy_category: fresh.pluggy_category,
+            pluggy_category_id: fresh.pluggy_category_id,
+            category: fresh.is_transfer ? fresh.category : t.category,
+          }
+        })
 
         let accounts = [...s.accounts]
         // Apply account balance updates from Pluggy
@@ -72,7 +91,7 @@ export const useStore = create(
           return { id: generateId(), ...t, account_id: acct?.id || '' }
         })
 
-        return { transactions: [...s.transactions, ...finalTxs], accounts }
+        return { transactions: [...existing, ...finalTxs], accounts }
       }),
 
       // Settings
