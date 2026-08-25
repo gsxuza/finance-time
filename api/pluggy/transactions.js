@@ -45,21 +45,28 @@ export default async function handler(req) {
 
     let { res, data } = await tryFetch(true)
 
-    // If date params caused a validation error, retry without them
-    if (!res.ok && (data?.message || data?.error || '').toLowerCase().includes('pattern')) {
+    // Date params can trigger a validation error (400 "pattern") or a 410 on some
+    // connectors — in both cases retry the plain query with no date filter.
+    if (!res.ok && (res.status === 410 || (data?.message || data?.error || '').toLowerCase().includes('pattern'))) {
       ;({ res, data } = await tryFetch(false))
     }
 
-    // 410 Gone = Pluggy item not ready or account data unavailable; return empty results gracefully
-    if (res.status === 410) {
-      return new Response(JSON.stringify({ results: [], total: 0 }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+    // Still failing: return empty results (so a sync completes) but surface what
+    // Pluggy actually said, so the UI can show a real diagnosis instead of "0 transactions".
+    if (!res.ok) {
+      return new Response(
+        JSON.stringify({
+          results: [],
+          total: 0,
+          _pluggyStatus: res.status,
+          _pluggyMessage: data?.message || data?.error || `HTTP ${res.status}`,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     return new Response(JSON.stringify(data), {
-      status: res.status,
+      status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
   } catch (err) {

@@ -38,7 +38,27 @@ async function fetchPluggyTransactions(accountId, from, to) {
   const res = await fetch(`/api/pluggy/transactions?${params}`)
   const data = await res.json()
   if (!res.ok) throw new Error(data.message || data.error || `Pluggy error ${res.status}`)
-  return data.results || data.transactions || []
+  if (data._pluggyMessage) {
+    console.warn('[Pluggy] transactions unavailable for', accountId, data._pluggyStatus, data._pluggyMessage)
+  }
+  return {
+    results: data.results || data.transactions || [],
+    warning: data._pluggyMessage ? `${data._pluggyStatus}: ${data._pluggyMessage}` : null,
+  }
+}
+
+// Current credit card bill ("fatura do mês"): the open bill, i.e. the one with the
+// nearest due date that has not passed yet; falls back to the most recent bill.
+async function fetchCurrentBill(accountId) {
+  const res = await fetch(`/api/pluggy/bills?accountId=${accountId}`)
+  const data = await res.json()
+  const bills = data.results || []
+  if (bills.length === 0) return null
+
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const sorted = [...bills].sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
+  const open = sorted.find((b) => String(b.dueDate || '').slice(0, 10) >= today)
+  return open || sorted[sorted.length - 1]
 }
 
 function mapAccountType(pluggyType) {
@@ -70,19 +90,39 @@ async function buildSyncPayload(pluggyAccounts) {
   const from = format(subMonths(new Date(), 3), 'yyyy-MM-dd')
   const to = format(new Date(), 'yyyy-MM-dd')
 
-  const accountUpdates = pluggyAccounts.map((a) => ({
-    pluggy_account_id: a.id,
-    name: a.name,
-    type: mapAccountType(a.type),
-    // Credit card balance from Pluggy is the amount owed; negate so it shows as negative (debt)
-    balance: a.type === 'CREDIT' ? -(Math.abs(a.balance ?? 0)) : (a.balance ?? 0),
-    icon: accountIcon(mapAccountType(a.type)),
+  const accountUpdates = await Promise.all(pluggyAccounts.map(async (a) => {
+    const type = mapAccountType(a.type)
+    let balance = a.balance ?? 0
+
+    if (a.type === 'CREDIT') {
+      // For credit cards show the current month's bill ("fatura"), not the total
+      // outstanding balance. Fall back to the account balance if bills aren't available.
+      let billAmount = null
+      try {
+        const bill = await fetchCurrentBill(a.id)
+        if (bill && bill.totalAmount != null) billAmount = bill.totalAmount
+      } catch (e) {
+        console.warn('[Pluggy] Failed to fetch bill for account', a.id, e)
+      }
+      // Negate so the card shows as a negative figure (money owed)
+      balance = -Math.abs(billAmount ?? balance)
+    }
+
+    return {
+      pluggy_account_id: a.id,
+      name: a.name,
+      type,
+      balance,
+      icon: accountIcon(type),
+    }
   }))
 
   const allTxs = []
+  const warnings = []
   await Promise.all(pluggyAccounts.map(async (a) => {
     try {
-      const txs = await fetchPluggyTransactions(a.id, from, to)
+      const { results: txs, warning } = await fetchPluggyTransactions(a.id, from, to)
+      if (warning) warnings.push(`${a.name}: ${warning}`)
       for (const t of txs) {
         const isExpense = t.type === 'DEBIT'
         const rawDesc = t.description || t.merchant?.name || t.descriptionRaw || ''
@@ -98,10 +138,11 @@ async function buildSyncPayload(pluggyAccounts) {
       }
     } catch (e) {
       console.warn('Failed to fetch txs for account', a.id, e)
+      warnings.push(`${a.name}: ${e.message}`)
     }
   }))
 
-  return { transactions: allTxs, accountUpdates }
+  return { transactions: allTxs, accountUpdates, warnings }
 }
 
 function ConnectionCard({ bc, onSync, onReconnect, onRevoke, onDelete, isSyncing }) {
@@ -246,7 +287,11 @@ export default function OpenFinance() {
       if (pluggyAccounts.length > 0) {
         const payload = await buildSyncPayload(pluggyAccounts)
         importPluggySync(payload)
-        setSyncInfo(`✅ ${payload.transactions.length} transações importadas com sucesso`)
+        setSyncInfo(
+          payload.transactions.length === 0 && payload.warnings.length > 0
+            ? `⚠️ Nenhuma transação retornada pelo banco — ${payload.warnings.join(' | ')}`
+            : `✅ ${payload.transactions.length} transações importadas com sucesso`
+        )
       } else {
         setSyncInfo('✅ Banco conectado. Clique em "Sincronizar" para importar as transações.')
       }
@@ -289,8 +334,12 @@ export default function OpenFinance() {
       const payload = await buildSyncPayload(pluggyAccounts)
       console.log('[Sync] payload txs:', payload.transactions.length)
       importPluggySync(payload)
-      setSyncInfo(`✅ ${payload.transactions.length} transações buscadas (novas adicionadas automaticamente)`)
-      setTimeout(() => setSyncInfo(null), 6000)
+      setSyncInfo(
+        payload.transactions.length === 0 && payload.warnings.length > 0
+          ? `⚠️ Nenhuma transação retornada pelo banco — ${payload.warnings.join(' | ')}`
+          : `✅ ${payload.transactions.length} transações buscadas (novas adicionadas automaticamente)`
+      )
+      setTimeout(() => setSyncInfo(null), 12000)
     } catch (err) {
       console.error('[Sync] error:', err)
       setSyncInfo(`⚠️ Erro ao sincronizar: ${err.message}`)
