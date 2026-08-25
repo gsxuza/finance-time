@@ -102,13 +102,11 @@ function DimensionBar({ dimension, index }) {
 }
 
 export default function HealthScore() {
-  const { transactions, accounts, budgets, goals, recurringItems } = useStore((s) => ({
-    transactions: s.transactions,
-    accounts: s.accounts,
-    budgets: s.budgets,
-    goals: s.goals,
-    recurringItems: s.recurringItems,
-  }))
+  const transactions = useStore((s) => s.transactions)
+  const accounts = useStore((s) => s.accounts)
+  const budgets = useStore((s) => s.budgets)
+  const goals = useStore((s) => s.goals)
+  const recurringItems = useStore((s) => s.recurringItems)
 
   const scoreData = useMemo(
     () => computeHealthScore({ transactions, accounts, budgets: budgets || [], goals: goals || [], recurringItems: recurringItems || [] }),

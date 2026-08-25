@@ -260,7 +260,8 @@ function GoalCard({ goal, onDeposit }) {
 }
 
 export default function Goals() {
-  const { goals, addGoal } = useStore((s) => ({ goals: s.goals, addGoal: s.addGoal }))
+  const goals = useStore((s) => s.goals || [])
+  const addGoal = useStore((s) => s.addGoal)
   const [showForm, setShowForm] = useState(false)
   const [depositGoal, setDepositGoal] = useState(null)
 
