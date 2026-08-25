@@ -74,7 +74,8 @@ async function buildSyncPayload(pluggyAccounts) {
     pluggy_account_id: a.id,
     name: a.name,
     type: mapAccountType(a.type),
-    balance: a.balance ?? 0,
+    // Credit card balance from Pluggy is the amount owed; negate so it shows as negative (debt)
+    balance: a.type === 'CREDIT' ? -(Math.abs(a.balance ?? 0)) : (a.balance ?? 0),
     icon: accountIcon(mapAccountType(a.type)),
   }))
 

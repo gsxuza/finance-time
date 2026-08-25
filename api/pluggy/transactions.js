@@ -50,6 +50,14 @@ export default async function handler(req) {
       ;({ res, data } = await tryFetch(false))
     }
 
+    // 410 Gone = Pluggy item not ready or account data unavailable; return empty results gracefully
+    if (res.status === 410) {
+      return new Response(JSON.stringify({ results: [], total: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     return new Response(JSON.stringify(data), {
       status: res.status,
       headers: { 'Content-Type': 'application/json' },
