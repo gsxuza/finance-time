@@ -1,32 +1,18 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { format, differenceInDays, parseISO, subMonths } from 'date-fns'
 import { Plus, RefreshCw, Unlink, AlertTriangle, X, ExternalLink, Loader2 } from 'lucide-react'
+import { PluggyConnect } from 'react-pluggy-connect'
 import { useStore } from '@/store/useStore'
 import { formatCurrency } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
 
-// Load Pluggy Connect Widget script once
-function usePluggyScript() {
-  const [ready, setReady] = useState(!!window.PluggyConnect)
-  const [error, setError] = useState(false)
-  useEffect(() => {
-    if (window.PluggyConnect) { setReady(true); return }
-    const script = document.createElement('script')
-    script.src = 'https://cdn.pluggy.ai/pluggy-connect/v2.js'
-    script.onload = () => setReady(true)
-    script.onerror = () => setError(true)
-    document.head.appendChild(script)
-  }, [])
-  return { ready, error }
-}
-
 async function fetchConnectToken(itemId = null) {
   const res = await fetch('/api/pluggy/connect-token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: itemId ? JSON.stringify({ itemId }) : JSON.stringify({}),
+    body: JSON.stringify(itemId ? { itemId } : {}),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Erro ao criar token de conexão')
@@ -47,9 +33,74 @@ async function fetchItem(itemId) {
   return data
 }
 
+async function fetchPluggyTransactions(accountId, from, to) {
+  const params = new URLSearchParams({ accountId, pageSize: '200', from, to })
+  const res = await fetch(`/api/pluggy/transactions?${params}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Erro ao buscar transações')
+  return data.results || []
+}
+
 function mapAccountType(pluggyType) {
-  const map = { BANK: 'checking', CREDIT: 'credit_card', SAVING: 'savings', INVESTMENT: 'investment' }
-  return map[pluggyType] || 'checking'
+  return { BANK: 'checking', CREDIT: 'credit_card', SAVING: 'savings', INVESTMENT: 'investment' }[pluggyType] || 'checking'
+}
+
+function accountIcon(type) {
+  return { checking: '🏦', savings: '🐷', credit_card: '💳', investment: '📈' }[type] || '🏦'
+}
+
+function autoCategory(description = '') {
+  const d = description.toLowerCase()
+  if (d.includes('supermercado') || d.includes('mercado') || d.includes('carrefour') || d.includes('pao de acucar')) return 'Supermercado'
+  if (d.includes('restaurante') || d.includes('lanchonete') || d.includes('hamburger') || d.includes('pizza') || d.includes('ifood') || d.includes('rappi')) return 'Restaurante'
+  if (d.includes('uber') || d.includes('99') || d.includes('combustivel') || d.includes('gasolina') || d.includes('onibus') || d.includes('metro')) return 'Transporte'
+  if (d.includes('aluguel') || d.includes('condominio') || d.includes('iptu')) return 'Moradia'
+  if (d.includes('farmacia') || d.includes('medico') || d.includes('hospital') || d.includes('plano de saude') || d.includes('unimed')) return 'Saúde'
+  if (d.includes('netflix') || d.includes('spotify') || d.includes('cinema') || d.includes('amazon prime') || d.includes('youtube')) return 'Lazer'
+  if (d.includes('curso') || d.includes('escola') || d.includes('faculdade') || d.includes('udemy') || d.includes('mensalidade')) return 'Educação'
+  if (d.includes('salario') || d.includes('salário') || d.includes('folha')) return 'Salário'
+  if (d.includes('freelance') || d.includes('projeto') || d.includes('servico')) return 'Freelance'
+  if (d.includes('invest') || d.includes('renda fixa') || d.includes('cdb') || d.includes('tesouro')) return 'Investimentos'
+  if (d.includes('roupa') || d.includes('calcado') || d.includes('vestuario') || d.includes('renner') || d.includes('riachuelo')) return 'Roupas'
+  if (d.includes('celular') || d.includes('internet') || d.includes('tim') || d.includes('claro') || d.includes('vivo')) return 'Tecnologia'
+  return 'Outros'
+}
+
+async function buildSyncPayload(pluggyAccounts) {
+  const from = format(subMonths(new Date(), 3), 'yyyy-MM-dd')
+  const to = format(new Date(), 'yyyy-MM-dd')
+
+  const accountUpdates = pluggyAccounts.map((a) => ({
+    pluggy_account_id: a.id,
+    name: a.name,
+    type: mapAccountType(a.type),
+    balance: a.balance ?? 0,
+    icon: accountIcon(mapAccountType(a.type)),
+  }))
+
+  const allTxs = []
+  await Promise.all(pluggyAccounts.map(async (a) => {
+    try {
+      const txs = await fetchPluggyTransactions(a.id, from, to)
+      for (const t of txs) {
+        const isExpense = t.type === 'DEBIT'
+        const rawDesc = t.description || t.merchant?.name || t.descriptionRaw || ''
+        allTxs.push({
+          pluggy_id: t.id,
+          pluggy_account_id: a.id,
+          date: t.date?.slice(0, 10) || to,
+          description: rawDesc,
+          amount: Math.abs(t.amount ?? 0),
+          type: isExpense ? 'expense' : 'income',
+          category: autoCategory(rawDesc),
+        })
+      }
+    } catch (e) {
+      console.warn('Failed to fetch txs for account', a.id, e)
+    }
+  }))
+
+  return { transactions: allTxs, accountUpdates }
 }
 
 function ConnectionCard({ bc, onSync, onReconnect, onRevoke, onDelete, isSyncing }) {
@@ -111,166 +162,76 @@ function ConnectionCard({ bc, onSync, onReconnect, onRevoke, onDelete, isSyncing
   )
 }
 
-function autoCategory(description = '') {
-  const d = description.toLowerCase()
-  if (d.includes('supermercado') || d.includes('mercado') || d.includes('carrefour') || d.includes('pao de acucar')) return 'Supermercado'
-  if (d.includes('restaurante') || d.includes('lanchonete') || d.includes('hamburger') || d.includes('pizza') || d.includes('ifood') || d.includes('rappi')) return 'Restaurante'
-  if (d.includes('uber') || d.includes('99') || d.includes('combustivel') || d.includes('gasolina') || d.includes('onibus') || d.includes('metro')) return 'Transporte'
-  if (d.includes('aluguel') || d.includes('condominio') || d.includes('iptu')) return 'Moradia'
-  if (d.includes('farmacia') || d.includes('medico') || d.includes('hospital') || d.includes('plano de saude') || d.includes('unimed')) return 'Saúde'
-  if (d.includes('netflix') || d.includes('spotify') || d.includes('cinema') || d.includes('amazon prime') || d.includes('youtube')) return 'Lazer'
-  if (d.includes('curso') || d.includes('escola') || d.includes('faculdade') || d.includes('udemy') || d.includes('mensalidade')) return 'Educação'
-  if (d.includes('salario') || d.includes('salário') || d.includes('folha')) return 'Salário'
-  if (d.includes('freelance') || d.includes('projeto') || d.includes('servico')) return 'Freelance'
-  if (d.includes('invest') || d.includes('renda fixa') || d.includes('cdb') || d.includes('tesouro')) return 'Investimentos'
-  if (d.includes('roupa') || d.includes('calcado') || d.includes('vestuario') || d.includes('renner') || d.includes('riachuelo')) return 'Roupas'
-  if (d.includes('celular') || d.includes('internet') || d.includes('tim') || d.includes('claro') || d.includes('vivo')) return 'Tecnologia'
-  return 'Outros'
-}
-
-function mapPluggyType(pluggyAccountType) {
-  return { BANK: 'checking', CREDIT: 'credit_card', SAVING: 'savings', INVESTMENT: 'investment' }[pluggyAccountType] || 'checking'
-}
-
-function accountIcon(type) {
-  return { checking: '🏦', savings: '🐷', credit_card: '💳', investment: '📈' }[type] || '🏦'
-}
-
-async function fetchPluggyTransactions(accountId, from, to) {
-  const params = new URLSearchParams({ accountId, pageSize: '200', from, to })
-  const res = await fetch(`/api/pluggy/transactions?${params}`)
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Erro ao buscar transações')
-  return data.results || []
-}
-
-async function buildSyncPayload(pluggyAccounts) {
-  const from = format(subMonths(new Date(), 3), 'yyyy-MM-dd')
-  const to = format(new Date(), 'yyyy-MM-dd')
-
-  const accountUpdates = pluggyAccounts.map((a) => ({
-    pluggy_account_id: a.id,
-    name: a.name,
-    type: mapPluggyType(a.type),
-    balance: a.balance ?? 0,
-    icon: accountIcon(mapPluggyType(a.type)),
-  }))
-
-  const allTxs = []
-  await Promise.all(pluggyAccounts.map(async (a) => {
-    try {
-      const txs = await fetchPluggyTransactions(a.id, from, to)
-      for (const t of txs) {
-        const isExpense = t.type === 'DEBIT'
-        const rawDesc = t.description || t.merchant?.name || t.descriptionRaw || ''
-        allTxs.push({
-          pluggy_id: t.id,
-          pluggy_account_id: a.id,
-          date: t.date?.slice(0, 10) || to,
-          description: rawDesc,
-          amount: Math.abs(t.amount ?? 0),
-          type: isExpense ? 'expense' : 'income',
-          category: autoCategory(rawDesc),
-        })
-      }
-    } catch (e) {
-      console.warn('Failed to fetch txs for account', a.id, e)
-    }
-  }))
-
-  return { transactions: allTxs, accountUpdates }
-}
-
 export default function OpenFinance() {
   const { bankConnections, addBankConnection, updateBankConnection, deleteBankConnection, importPluggySync } = useStore()
-  const { ready: scriptReady, error: scriptError } = usePluggyScript()
-  const instanceRef = useRef(null)
   const [syncing, setSyncing] = useState(null)
   const [connecting, setConnecting] = useState(false)
   const [connectError, setConnectError] = useState(null)
   const [syncInfo, setSyncInfo] = useState(null)
+  const [widgetToken, setWidgetToken] = useState(null)
+  const [reconnectItemId, setReconnectItemId] = useState(null)
 
   const openWidget = useCallback(async (itemId = null) => {
     setConnecting(true)
     setConnectError(null)
-    // Wait up to 10s for Pluggy script to load
-    if (!window.PluggyConnect) {
-      await new Promise((resolve, reject) => {
-        let attempts = 0
-        const poll = setInterval(() => {
-          if (window.PluggyConnect) { clearInterval(poll); resolve() }
-          if (++attempts > 100) { clearInterval(poll); reject(new Error('Widget do Pluggy não carregou. Verifique sua conexão e recarregue a página.')) }
-        }, 100)
-      }).catch((err) => { setConnectError(err.message); setConnecting(false); throw err })
-    }
     try {
       const token = await fetchConnectToken(itemId)
-
-      instanceRef.current?.destroy?.()
-
-      instanceRef.current = new window.PluggyConnect({
-        connectToken: token,
-        includeSandbox: false,
-        onSuccess: async (itemData) => {
-          const id = itemData?.item?.id || itemData?.id
-          if (!id) return
-          try {
-            const [item, accounts] = await Promise.all([fetchItem(id), fetchItemAccounts(id)])
-            const connector = item.connector || {}
-            const mainAccount = accounts[0] || {}
-            const existing = bankConnections.find((bc) => bc.pluggy_item_id === id)
-            const pluggyAccounts = accounts.map((a) => ({
-              id: a.id, name: a.name, type: a.type, balance: a.balance, number: a.number, currencyCode: a.currencyCode,
-            }))
-            const connectionData = {
-              bank_name: connector.name || 'Banco',
-              bank_code: String(connector.id || ''),
-              account_type: mapAccountType(mainAccount.type),
-              account_number: mainAccount.number ? `****${String(mainAccount.number).slice(-4)}` : '****',
-              status: item.status === 'UPDATED' ? 'connected' : item.status === 'OUTDATED' ? 'expired' : 'error',
-              last_sync: new Date().toISOString(),
-              consent_expires: format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-              balance: mainAccount.balance ?? 0,
-              auto_sync: true,
-              pluggy_item_id: id,
-              pluggy_accounts: pluggyAccounts,
-            }
-            if (existing) {
-              updateBankConnection(existing.id, connectionData)
-            } else {
-              addBankConnection(connectionData)
-            }
-            // Sync transactions and accounts into main store
-            const payload = await buildSyncPayload(pluggyAccounts)
-            importPluggySync(payload)
-          } catch (err) {
-            console.error('Error fetching Pluggy data:', err)
-            addBankConnection({
-              bank_name: 'Banco conectado',
-              bank_code: '',
-              account_type: 'checking',
-              status: 'connected',
-              last_sync: new Date().toISOString(),
-              consent_expires: format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-              pluggy_item_id: id,
-            })
-          }
-        },
-        onError: (err) => {
-          console.error('Pluggy Connect error:', err)
-          setConnectError('Erro ao conectar com o banco. Tente novamente.')
-        },
-        onClose: () => {
-          setConnecting(false)
-        },
-      })
-
-      instanceRef.current.open()
+      setReconnectItemId(itemId)
+      setWidgetToken(token)
     } catch (err) {
       setConnectError(err.message)
+    } finally {
       setConnecting(false)
     }
-  }, [scriptReady, bankConnections, addBankConnection, updateBankConnection])
+  }, [])
+
+  const closeWidget = () => {
+    setWidgetToken(null)
+    setReconnectItemId(null)
+  }
+
+  const handleSuccess = async (itemData) => {
+    const id = itemData?.item?.id || itemData?.id
+    if (!id) { closeWidget(); return }
+    try {
+      const [item, accounts] = await Promise.all([fetchItem(id), fetchItemAccounts(id)])
+      const connector = item.connector || {}
+      const mainAccount = accounts[0] || {}
+      const pluggyAccounts = accounts.map((a) => ({
+        id: a.id, name: a.name, type: a.type, balance: a.balance, number: a.number,
+      }))
+      const existing = bankConnections.find((bc) => bc.pluggy_item_id === id)
+      const connectionData = {
+        bank_name: connector.name || 'Banco',
+        bank_code: String(connector.id || ''),
+        account_type: mapAccountType(mainAccount.type),
+        account_number: mainAccount.number ? `****${String(mainAccount.number).slice(-4)}` : '****',
+        status: item.status === 'UPDATED' ? 'connected' : item.status === 'OUTDATED' ? 'expired' : 'error',
+        last_sync: new Date().toISOString(),
+        consent_expires: format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+        balance: mainAccount.balance ?? 0,
+        auto_sync: true,
+        pluggy_item_id: id,
+        pluggy_accounts: pluggyAccounts,
+      }
+      if (existing) updateBankConnection(existing.id, connectionData)
+      else addBankConnection(connectionData)
+
+      const payload = await buildSyncPayload(pluggyAccounts)
+      importPluggySync(payload)
+      setSyncInfo(`✅ ${payload.transactions.length} transações importadas com sucesso`)
+      setTimeout(() => setSyncInfo(null), 6000)
+    } catch (err) {
+      console.error('Error fetching Pluggy data:', err)
+      addBankConnection({
+        bank_name: 'Banco conectado', bank_code: '', account_type: 'checking',
+        status: 'connected', last_sync: new Date().toISOString(),
+        consent_expires: format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+        pluggy_item_id: id,
+      })
+    }
+    closeWidget()
+  }
 
   const handleSync = async (bc) => {
     if (!bc.pluggy_item_id) {
@@ -279,10 +240,7 @@ export default function OpenFinance() {
     }
     setSyncing(bc.id)
     try {
-      const [item, accounts] = await Promise.all([
-        fetchItem(bc.pluggy_item_id),
-        fetchItemAccounts(bc.pluggy_item_id),
-      ])
+      const [item, accounts] = await Promise.all([fetchItem(bc.pluggy_item_id), fetchItemAccounts(bc.pluggy_item_id)])
       const mainAccount = accounts[0] || {}
       const pluggyAccounts = accounts.map((a) => ({
         id: a.id, name: a.name, type: a.type, balance: a.balance, number: a.number,
@@ -295,8 +253,8 @@ export default function OpenFinance() {
       })
       const payload = await buildSyncPayload(pluggyAccounts)
       importPluggySync(payload)
-      setSyncInfo(`${payload.transactions.length} transações buscadas (novas serão adicionadas automaticamente)`)
-      setTimeout(() => setSyncInfo(null), 5000)
+      setSyncInfo(`✅ ${payload.transactions.length} transações buscadas (novas adicionadas automaticamente)`)
+      setTimeout(() => setSyncInfo(null), 6000)
     } catch (err) {
       console.error('Sync error:', err)
     } finally {
@@ -311,7 +269,7 @@ export default function OpenFinance() {
           <h1 className="text-xl font-bold text-slate-900">Open Finance</h1>
           <p className="text-xs text-slate-400 mt-0.5">Powered by Pluggy</p>
         </div>
-        <Button onClick={() => openWidget()} size="sm" disabled={connecting}>
+        <Button onClick={() => openWidget()} size="sm" disabled={connecting || !!widgetToken}>
           {connecting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
           {connecting ? 'Abrindo...' : 'Conectar banco'}
         </Button>
@@ -333,16 +291,8 @@ export default function OpenFinance() {
         </div>
       </div>
 
-      {scriptError && (
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-5 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-700">Não foi possível carregar o widget do Pluggy. Verifique sua conexão e recarregue a página.</p>
-        </div>
-      )}
-
       {syncInfo && (
         <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-5 flex items-center gap-3">
-          <span className="text-emerald-600 text-lg">✅</span>
           <p className="text-sm text-emerald-700">{syncInfo}</p>
         </div>
       )}
@@ -360,12 +310,33 @@ export default function OpenFinance() {
         </div>
       )}
 
-      {bankConnections.length === 0 ? (
+      {/* Pluggy Connect Widget (inline, shown when token is ready) */}
+      {widgetToken && (
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-700">Selecione seu banco abaixo:</p>
+            <button onClick={closeWidget} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="rounded-2xl overflow-hidden border border-slate-200" style={{ minHeight: 580 }}>
+            <PluggyConnect
+              connectToken={widgetToken}
+              includeSandbox={false}
+              onSuccess={handleSuccess}
+              onError={(err) => { setConnectError('Erro ao conectar. Tente novamente.'); closeWidget() }}
+              onClose={closeWidget}
+            />
+          </div>
+        </div>
+      )}
+
+      {bankConnections.length === 0 && !widgetToken ? (
         <div className="text-center py-20 text-slate-400">
           <p className="text-5xl mb-4">🏦</p>
           <p className="text-sm font-medium text-slate-600">Nenhum banco conectado</p>
           <p className="text-xs mt-1 mb-5">Conecte suas contas bancárias para sincronizar saldo e transações automaticamente via Open Finance.</p>
-          <Button onClick={() => openWidget()} disabled={connecting}>
+          <Button onClick={() => openWidget()} disabled={connecting || !!widgetToken}>
             {connecting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
             Conectar primeiro banco
           </Button>
