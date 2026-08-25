@@ -8,6 +8,7 @@ const initialState = {
   budgets: [],
   goals: [],
   recurringItems: [],
+  readNotificationIds: [],
   categories: DEFAULT_CATEGORIES,
   bankConnections: [],
   settings: {
@@ -46,6 +47,12 @@ export const useStore = create(
       addBudget: (data) => set((s) => ({ budgets: [...s.budgets, { id: generateId(), ...data }] })),
       updateBudget: (id, data) => set((s) => ({ budgets: s.budgets.map((b) => (b.id === id ? { ...b, ...data } : b)) })),
       deleteBudget: (id) => set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) })),
+
+      // Notifications
+      markNotificationsRead: (ids) => set((s) => ({
+        readNotificationIds: [...new Set([...(s.readNotificationIds || []), ...ids])],
+      })),
+      clearReadNotifications: () => set({ readNotificationIds: [] }),
 
       // Goals
       addGoal: (data) => set((s) => ({ goals: [...(s.goals || []), { id: generateId(), created_at: new Date().toISOString(), ...data }] })),

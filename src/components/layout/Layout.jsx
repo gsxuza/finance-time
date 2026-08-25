@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
+import { TopBar } from './TopBar'
 import { Onboarding } from '@/components/Onboarding'
 import { useStore } from '@/store/useStore'
 
@@ -19,6 +20,7 @@ export function Layout() {
     <div className="flex h-screen overflow-hidden bg-bg">
       <Sidebar />
       <main className="flex-1 overflow-y-auto scrollbar-dark pb-20 lg:pb-0">
+        <TopBar />
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
