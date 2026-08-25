@@ -14,12 +14,26 @@ async function getApiKey() {
   return data.apiKey
 }
 
+// The `next` field comes back as a link (or query string) carrying the base64
+// cursor in an `after` param. Pull it out however it happens to be shaped.
+function extractCursor(next) {
+  if (!next || typeof next !== 'string') return null
+  try {
+    return new URL(next, 'https://api.pluggy.ai').searchParams.get('after')
+  } catch {
+    const match = next.match(/[?&]after=([^&]+)/)
+    return match ? decodeURIComponent(match[1]) : next
+  }
+}
+
+const MAX_PAGES = 20
+
 export default async function handler(req) {
   const url = new URL(req.url)
   const accountId = url.searchParams.get('accountId')
-  const from = url.searchParams.get('from') || ''
-  const to = url.searchParams.get('to') || ''
-  const pageSize = url.searchParams.get('pageSize') || '50'
+  // Accept the legacy from/to names the client already sends
+  const dateFrom = url.searchParams.get('dateFrom') || url.searchParams.get('from') || ''
+  const dateTo = url.searchParams.get('dateTo') || url.searchParams.get('to') || ''
 
   if (!accountId) {
     return new Response(JSON.stringify({ error: 'accountId is required' }), {
@@ -31,28 +45,26 @@ export default async function handler(req) {
   try {
     const apiKey = await getApiKey()
 
-    // Try with date range first; if Pluggy rejects it, fall back to no date filter
-    const tryFetch = async (includeDate) => {
-      const params = new URLSearchParams({ accountId, pageSize })
-      if (includeDate && from) params.set('from', from)
-      if (includeDate && to) params.set('to', to)
-      const res = await fetch(`https://api.pluggy.ai/transactions?${params}`, {
+    const fetchPage = async (after, withDates) => {
+      const params = new URLSearchParams({ accountId })
+      if (withDates && dateFrom) params.set('dateFrom', dateFrom)
+      if (withDates && dateTo) params.set('dateTo', dateTo)
+      if (after) params.set('after', after)
+      const res = await fetch(`https://api.pluggy.ai/v2/transactions?${params}`, {
         headers: { 'X-API-KEY': apiKey },
       })
       const data = await res.json()
       return { res, data }
     }
 
-    let { res, data } = await tryFetch(true)
-
-    // Date params can trigger a validation error (400 "pattern") or a 410 on some
-    // connectors — in both cases retry the plain query with no date filter.
-    if (!res.ok && (res.status === 410 || (data?.message || data?.error || '').toLowerCase().includes('pattern'))) {
-      ;({ res, data } = await tryFetch(false))
+    // Probe the first page; if the date filter is rejected, retry unfiltered.
+    let withDates = true
+    let { res, data } = await fetchPage(null, withDates)
+    if (!res.ok && (dateFrom || dateTo)) {
+      withDates = false
+      ;({ res, data } = await fetchPage(null, withDates))
     }
 
-    // Still failing: return empty results (so a sync completes) but surface what
-    // Pluggy actually said, so the UI can show a real diagnosis instead of "0 transactions".
     if (!res.ok) {
       return new Response(
         JSON.stringify({
@@ -65,7 +77,17 @@ export default async function handler(req) {
       )
     }
 
-    return new Response(JSON.stringify(data), {
+    const results = [...(data.results || [])]
+    let cursor = extractCursor(data.next)
+
+    for (let page = 1; page < MAX_PAGES && cursor; page++) {
+      const nextPage = await fetchPage(cursor, withDates)
+      if (!nextPage.res.ok) break
+      results.push(...(nextPage.data.results || []))
+      cursor = extractCursor(nextPage.data.next)
+    }
+
+    return new Response(JSON.stringify({ results, total: results.length }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })

@@ -34,7 +34,7 @@ async function fetchItem(itemId) {
 }
 
 async function fetchPluggyTransactions(accountId, from, to) {
-  const params = new URLSearchParams({ accountId, pageSize: '100', from, to })
+  const params = new URLSearchParams({ accountId, dateFrom: from, dateTo: to })
   const res = await fetch(`/api/pluggy/transactions?${params}`)
   const data = await res.json()
   if (!res.ok) throw new Error(data.message || data.error || `Pluggy error ${res.status}`)
