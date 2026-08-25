@@ -1,7 +1,9 @@
-import { Settings2, Bell, Shield, RefreshCw, LogOut } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Settings2, Bell, Shield, RefreshCw, LogOut, Cloud, Copy, Check } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { getSyncUserId } from '@/hooks/useNeonSync'
 
 function Toggle({ checked, onChange, label, desc }) {
   return (
@@ -34,6 +36,75 @@ function Section({ icon: Icon, title, children }) {
         {children}
       </CardContent>
     </Card>
+  )
+}
+
+function SyncCodeSection() {
+  const [userId, setUserId] = useState('')
+  const [inputCode, setInputCode] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
+
+  useEffect(() => {
+    setUserId(getSyncUserId() || '')
+  }, [])
+
+  function handleCopy() {
+    if (!userId) return
+    navigator.clipboard.writeText(userId).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  function handleApplyCode() {
+    const code = inputCode.trim()
+    if (!code || code.length < 8) { setSyncMsg('Código inválido.'); return }
+    localStorage.setItem('finance-time-uid', code)
+    setSyncMsg('Código aplicado! Recarregando...')
+    setTimeout(() => window.location.reload(), 1200)
+  }
+
+  return (
+    <Section icon={Cloud} title="Sincronização entre dispositivos">
+      <p className="text-xs text-slate-500 mb-3">
+        Use o código abaixo para sincronizar seus dados em outros dispositivos. Cole o código no outro dispositivo e clique em "Aplicar".
+      </p>
+      <div className="mb-4">
+        <label className="text-xs font-medium text-slate-600 mb-1 block">Seu código de sync</label>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 px-3 py-2 bg-slate-100 rounded-xl text-xs text-slate-700 truncate font-mono select-all">
+            {userId || '...'}
+          </code>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-blue-500 text-white text-xs font-medium hover:bg-blue-600 transition-colors cursor-pointer"
+          >
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            {copied ? 'Copiado' : 'Copiar'}
+          </button>
+        </div>
+      </div>
+      <div>
+        <label className="text-xs font-medium text-slate-600 mb-1 block">Aplicar código de outro dispositivo</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Cole o código aqui"
+            value={inputCode}
+            onChange={(e) => setInputCode(e.target.value)}
+            className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={handleApplyCode}
+            className="px-3 py-2 rounded-xl bg-green-500 text-white text-xs font-medium hover:bg-green-600 transition-colors cursor-pointer"
+          >
+            Aplicar
+          </button>
+        </div>
+        {syncMsg && <p className="text-xs mt-1.5 text-blue-600">{syncMsg}</p>}
+      </div>
+    </Section>
   )
 }
 
@@ -115,6 +186,9 @@ export default function Settings() {
           </div>
         </div>
       </Section>
+
+      {/* Sync */}
+      <SyncCodeSection />
 
       {/* About */}
       <div className="text-center py-6 text-slate-400 text-xs">

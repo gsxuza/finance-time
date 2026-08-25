@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
+import { useNeonSync } from '@/hooks/useNeonSync'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Transactions from '@/pages/Transactions'
@@ -38,9 +39,15 @@ function AuthGate({ children }) {
   return children
 }
 
+function SyncProvider({ children }) {
+  useNeonSync()
+  return children
+}
+
 export default function App() {
   return (
     <AuthGate>
+      <SyncProvider>
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
@@ -55,6 +62,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </SyncProvider>
     </AuthGate>
   )
 }
