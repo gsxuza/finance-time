@@ -2,40 +2,54 @@ import { callGemini, geminiErrorMessage } from './_gemini.js'
 
 export const config = { runtime: 'edge' }
 
+const json = (payload, status = 200) =>
+  new Response(JSON.stringify(payload), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+// Anything thrown outside a handler returns an HTML error page, and the client's
+// res.json() then fails with an opaque parser error. Keep every exit as JSON.
 export default async function handler(req) {
+  try {
+    return await chat(req)
+  } catch (err) {
+    return json({ error: `Erro interno do assistente: ${err.message}` }, 500)
+  }
+}
+
+async function chat(req) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), { status: 500 })
+    return json({ error: 'GEMINI_API_KEY not configured' }, 500)
   }
 
   let body
   try {
     body = await req.json()
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 })
+    return json({ error: 'Invalid JSON' }, 400)
   }
 
-  const { message, history = [], financialData = {} } = body
+  const { message, history = [], financialData = {}, month } = body
   if (!message) {
-    return new Response(JSON.stringify({ error: 'message is required' }), { status: 400 })
+    return json({ error: 'message is required' }, 400)
   }
 
   const { accounts = [], transactions = [], budgets = [] } = financialData
 
   const totalBalance = accounts.filter((a) => a.is_active).reduce((s, a) => s + (a.balance || 0), 0)
 
-  // Transaction dates are local (YYYY-MM-DD), so the current month has to be
-  // local too — deriving it from toISOString() puts the server's UTC month here,
-  // which is the wrong month for a few hours around every month boundary.
-  const thisMonth = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-  }).format(new Date()).slice(0, 7)
+  // Transaction dates are local calendar dates, so the current month has to be
+  // local too — and only the client knows the user's timezone. It sends the
+  // month; the UTC month is just a fallback for an older client.
+  const thisMonth = /^\d{4}-\d{2}$/.test(month || '')
+    ? month
+    : new Date().toISOString().slice(0, 7)
 
   const sum = (list) => list.reduce((s, t) => s + (t.amount || 0), 0)
   const monthlyIncome = sum(transactions.filter((t) => t.type === 'income' && t.date?.startsWith(thisMonth)))
@@ -49,8 +63,14 @@ export default async function handler(req) {
       categoryTotals[cat] = (categoryTotals[cat] || 0) + (t.amount || 0)
     })
 
-  const money = (n) =>
-    `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  // Formatted by hand rather than via toLocaleString: the edge runtime ships
+  // limited ICU, so locale-aware formatting is not dependable here.
+  const money = (n) => {
+    const v = Number(n || 0)
+    const [int, dec] = Math.abs(v).toFixed(2).split('.')
+    const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    return `${v < 0 ? '-' : ''}R$ ${grouped},${dec}`
+  }
   const byDateDesc = (a, b) => (b.date || '').localeCompare(a.date || '')
   const line = (t) => `${t.date} | ${money(t.amount)} | ${t.category || 'Sem categoria'} | ${t.description || ''}`
 
@@ -153,6 +173,6 @@ INSTRUÇÕES:
       headers: { 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return json({ error: err.message }, 500)
   }
 }

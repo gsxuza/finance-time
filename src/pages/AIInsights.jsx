@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Sparkles, Send, Loader2, User, Bot } from 'lucide-react'
 import { useStore } from '@/store/useStore'
+import { currentMonth } from '@/lib/utils'
 
 const QUICK_ACTIONS = [
   'Resumo financeiro do mês',
@@ -91,10 +92,20 @@ export default function AIInsights() {
         body: JSON.stringify({
           message: msg,
           history,
+          month: currentMonth(),
           financialData: { accounts, transactions, budgets },
         }),
       })
-      const data = await res.json()
+
+      // A crashed function replies with an HTML error page, and parsing that
+      // throws a browser-internal message that means nothing to the user.
+      let data
+      try {
+        data = JSON.parse(await res.text())
+      } catch {
+        throw new Error(`O assistente falhou (erro ${res.status}). Tente novamente em instantes.`)
+      }
+
       if (!res.ok) throw new Error(data.error || 'Erro ao consultar IA')
       setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }])
     } catch (err) {
