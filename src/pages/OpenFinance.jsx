@@ -10,15 +10,16 @@ import { StatusBadge } from '@/components/ui/Badge'
 // Load Pluggy Connect Widget script once
 function usePluggyScript() {
   const [ready, setReady] = useState(!!window.PluggyConnect)
+  const [error, setError] = useState(false)
   useEffect(() => {
-    if (window.PluggyConnect) return
+    if (window.PluggyConnect) { setReady(true); return }
     const script = document.createElement('script')
     script.src = 'https://cdn.pluggy.ai/pluggy-connect/v2.js'
     script.onload = () => setReady(true)
-    script.onerror = () => console.error('Failed to load Pluggy Connect script')
+    script.onerror = () => setError(true)
     document.head.appendChild(script)
   }, [])
-  return ready
+  return { ready, error }
 }
 
 async function fetchConnectToken(itemId = null) {
@@ -182,7 +183,7 @@ async function buildSyncPayload(pluggyAccounts) {
 
 export default function OpenFinance() {
   const { bankConnections, addBankConnection, updateBankConnection, deleteBankConnection, importPluggySync } = useStore()
-  const scriptReady = usePluggyScript()
+  const { ready: scriptReady, error: scriptError } = usePluggyScript()
   const instanceRef = useRef(null)
   const [syncing, setSyncing] = useState(null)
   const [connecting, setConnecting] = useState(false)
@@ -190,9 +191,18 @@ export default function OpenFinance() {
   const [syncInfo, setSyncInfo] = useState(null)
 
   const openWidget = useCallback(async (itemId = null) => {
-    if (!scriptReady) return
     setConnecting(true)
     setConnectError(null)
+    // Wait up to 10s for Pluggy script to load
+    if (!window.PluggyConnect) {
+      await new Promise((resolve, reject) => {
+        let attempts = 0
+        const poll = setInterval(() => {
+          if (window.PluggyConnect) { clearInterval(poll); resolve() }
+          if (++attempts > 100) { clearInterval(poll); reject(new Error('Widget do Pluggy não carregou. Verifique sua conexão e recarregue a página.')) }
+        }, 100)
+      }).catch((err) => { setConnectError(err.message); setConnecting(false); throw err })
+    }
     try {
       const token = await fetchConnectToken(itemId)
 
@@ -301,7 +311,7 @@ export default function OpenFinance() {
           <h1 className="text-xl font-bold text-slate-900">Open Finance</h1>
           <p className="text-xs text-slate-400 mt-0.5">Powered by Pluggy</p>
         </div>
-        <Button onClick={() => openWidget()} size="sm" disabled={!scriptReady || connecting}>
+        <Button onClick={() => openWidget()} size="sm" disabled={connecting}>
           {connecting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
           {connecting ? 'Abrindo...' : 'Conectar banco'}
         </Button>
@@ -322,6 +332,13 @@ export default function OpenFinance() {
           </div>
         </div>
       </div>
+
+      {scriptError && (
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-5 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-700">Não foi possível carregar o widget do Pluggy. Verifique sua conexão e recarregue a página.</p>
+        </div>
+      )}
 
       {syncInfo && (
         <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-5 flex items-center gap-3">
@@ -348,7 +365,7 @@ export default function OpenFinance() {
           <p className="text-5xl mb-4">🏦</p>
           <p className="text-sm font-medium text-slate-600">Nenhum banco conectado</p>
           <p className="text-xs mt-1 mb-5">Conecte suas contas bancárias para sincronizar saldo e transações automaticamente via Open Finance.</p>
-          <Button onClick={() => openWidget()} disabled={!scriptReady || connecting}>
+          <Button onClick={() => openWidget()} disabled={connecting}>
             {connecting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
             Conectar primeiro banco
           </Button>
