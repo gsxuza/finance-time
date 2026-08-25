@@ -260,13 +260,24 @@ export default function OpenFinance() {
   }
 
   const handleSync = async (bc) => {
-    if (!bc.pluggy_item_id) {
+    const itemId = typeof bc.pluggy_item_id === 'string' ? bc.pluggy_item_id : bc.pluggy_item_id?.id || null
+    if (!itemId) {
       updateBankConnection(bc.id, { last_sync: new Date().toISOString() })
+      setSyncInfo('⚠️ ID do item Pluggy não encontrado. Reconecte o banco.')
+      setTimeout(() => setSyncInfo(null), 6000)
       return
     }
     setSyncing(bc.id)
+    console.log('[Sync] itemId:', itemId)
     try {
-      const [item, accounts] = await Promise.all([fetchItem(bc.pluggy_item_id), fetchItemAccounts(bc.pluggy_item_id)])
+      console.log('[Sync] fetching item...')
+      const item = await fetchItem(itemId)
+      console.log('[Sync] item:', item)
+
+      console.log('[Sync] fetching accounts...')
+      const accounts = await fetchItemAccounts(itemId)
+      console.log('[Sync] accounts:', accounts)
+
       const mainAccount = accounts[0] || {}
       const pluggyAccounts = accounts.map((a) => ({
         id: a.id, name: a.name, type: a.type, balance: a.balance, number: a.number,
@@ -277,12 +288,15 @@ export default function OpenFinance() {
         last_sync: new Date().toISOString(),
         pluggy_accounts: pluggyAccounts,
       })
+
+      console.log('[Sync] building payload for', pluggyAccounts.length, 'accounts')
       const payload = await buildSyncPayload(pluggyAccounts)
+      console.log('[Sync] payload txs:', payload.transactions.length)
       importPluggySync(payload)
       setSyncInfo(`✅ ${payload.transactions.length} transações buscadas (novas adicionadas automaticamente)`)
       setTimeout(() => setSyncInfo(null), 6000)
     } catch (err) {
-      console.error('Sync error:', err)
+      console.error('[Sync] error:', err)
       setSyncInfo(`⚠️ Erro ao sincronizar: ${err.message}`)
       setTimeout(() => setSyncInfo(null), 8000)
     } finally {
