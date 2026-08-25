@@ -212,13 +212,10 @@ export default function OpenFinance() {
     setSyncInfo('⏳ Sincronizando dados do banco, aguarde...')
     let item, accounts
     for (let attempt = 0; attempt < 10; attempt++) {
-      try {
-        ;[item, accounts] = await Promise.all([fetchItem(id), fetchItemAccounts(id)])
-        console.log('[Pluggy] item status:', item.status, 'accounts:', accounts.length)
-        if (item.status === 'UPDATED' || accounts.length > 0) break
-      } catch (err) {
-        console.warn('[Pluggy] poll error:', err.message)
-      }
+      try { item = await fetchItem(id) } catch (e) { console.warn('[Pluggy] fetchItem error:', e.message) }
+      try { accounts = await fetchItemAccounts(id) } catch (e) { console.warn('[Pluggy] fetchItemAccounts error:', e.message) }
+      console.log('[Pluggy] poll attempt', attempt, 'item status:', item?.status, 'accounts:', accounts?.length)
+      if (item?.status === 'UPDATED' || (accounts?.length ?? 0) > 0) break
       await new Promise((r) => setTimeout(r, 3000))
     }
 
@@ -270,20 +267,18 @@ export default function OpenFinance() {
     setSyncing(bc.id)
     console.log('[Sync] itemId:', itemId)
     try {
-      console.log('[Sync] fetching item...')
-      const item = await fetchItem(itemId)
-      console.log('[Sync] item:', item)
-
-      console.log('[Sync] fetching accounts...')
+      console.log('[Sync] fetching item and accounts...')
+      let item = null
+      try { item = await fetchItem(itemId) } catch (e) { console.warn('[Sync] fetchItem failed (non-fatal):', e.message) }
       const accounts = await fetchItemAccounts(itemId)
-      console.log('[Sync] accounts:', accounts)
+      console.log('[Sync] item status:', item?.status, 'accounts:', accounts.length)
 
       const mainAccount = accounts[0] || {}
       const pluggyAccounts = accounts.map((a) => ({
         id: a.id, name: a.name, type: a.type, balance: a.balance, number: a.number,
       }))
       updateBankConnection(bc.id, {
-        status: item.status === 'UPDATED' ? 'connected' : item.status === 'OUTDATED' ? 'expired' : 'error',
+        status: item?.status === 'UPDATED' ? 'connected' : item?.status === 'OUTDATED' ? 'expired' : 'connected',
         balance: mainAccount.balance ?? bc.balance,
         last_sync: new Date().toISOString(),
         pluggy_accounts: pluggyAccounts,

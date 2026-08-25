@@ -1,27 +1,18 @@
 import { neon } from '@neondatabase/serverless'
 
-export const config = { runtime: 'nodejs', maxDuration: 10 }
+export const config = { maxDuration: 30 }
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  let userId, state
-  try {
-    const body = await req.json()
-    userId = body.userId
-    state = body.state
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid body' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
-  }
-
+  const { userId, state } = req.body || {}
   if (!userId || typeof userId !== 'string' || userId.length > 128) {
-    return new Response(JSON.stringify({ error: 'userId required' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+    return res.status(400).json({ error: 'userId required' })
   }
-
   if (!state || typeof state !== 'object') {
-    return new Response(JSON.stringify({ error: 'state required' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+    return res.status(400).json({ error: 'state required' })
   }
 
   try {
@@ -43,11 +34,8 @@ export default async function handler(req) {
             updated_at = NOW()
     `
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return res.status(200).json({ ok: true })
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+    return res.status(500).json({ error: err.message })
   }
 }
