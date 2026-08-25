@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { format, differenceInDays, parseISO, subMonths } from 'date-fns'
 import { Plus, RefreshCw, Unlink, AlertTriangle, X, ExternalLink, Loader2 } from 'lucide-react'
 import { PluggyConnect } from 'react-pluggy-connect'
@@ -164,6 +164,8 @@ function ConnectionCard({ bc, onSync, onReconnect, onRevoke, onDelete, isSyncing
 
 export default function OpenFinance() {
   const { bankConnections, addBankConnection, updateBankConnection, deleteBankConnection, importPluggySync } = useStore()
+  const bankConnectionsRef = useRef(bankConnections)
+  useEffect(() => { bankConnectionsRef.current = bankConnections }, [bankConnections])
   const [syncing, setSyncing] = useState(null)
   const [connecting, setConnecting] = useState(false)
   const [connectError, setConnectError] = useState(null)
@@ -191,22 +193,47 @@ export default function OpenFinance() {
   }
 
   const handleSuccess = async (itemData) => {
+    console.log('[Pluggy] onSuccess payload:', JSON.stringify(itemData))
     const id = itemData?.item?.id || itemData?.id
     if (!id) { closeWidget(); return }
+
+    // Save a preliminary connection record immediately
+    const existing = bankConnectionsRef.current.find((bc) => bc.pluggy_item_id === id)
+    const prelimData = {
+      bank_name: 'Carregando...', bank_code: '', account_type: 'checking',
+      status: 'connected', last_sync: new Date().toISOString(),
+      consent_expires: format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+      pluggy_item_id: id,
+    }
+    if (!existing) addBankConnection(prelimData)
+    closeWidget()
+
+    // Poll until item is UPDATED (Pluggy may still be syncing)
+    setSyncInfo('⏳ Sincronizando dados do banco, aguarde...')
+    let item, accounts
+    for (let attempt = 0; attempt < 10; attempt++) {
+      try {
+        ;[item, accounts] = await Promise.all([fetchItem(id), fetchItemAccounts(id)])
+        console.log('[Pluggy] item status:', item.status, 'accounts:', accounts.length)
+        if (item.status === 'UPDATED' || accounts.length > 0) break
+      } catch (err) {
+        console.warn('[Pluggy] poll error:', err.message)
+      }
+      await new Promise((r) => setTimeout(r, 3000))
+    }
+
     try {
-      const [item, accounts] = await Promise.all([fetchItem(id), fetchItemAccounts(id)])
-      const connector = item.connector || {}
-      const mainAccount = accounts[0] || {}
-      const pluggyAccounts = accounts.map((a) => ({
+      const connector = item?.connector || {}
+      const mainAccount = (accounts || [])[0] || {}
+      const pluggyAccounts = (accounts || []).map((a) => ({
         id: a.id, name: a.name, type: a.type, balance: a.balance, number: a.number,
       }))
-      const existing = bankConnections.find((bc) => bc.pluggy_item_id === id)
       const connectionData = {
-        bank_name: connector.name || 'Banco',
+        bank_name: connector.name || 'Banco conectado',
         bank_code: String(connector.id || ''),
         account_type: mapAccountType(mainAccount.type),
         account_number: mainAccount.number ? `****${String(mainAccount.number).slice(-4)}` : '****',
-        status: item.status === 'UPDATED' ? 'connected' : item.status === 'OUTDATED' ? 'expired' : 'error',
+        status: item?.status === 'UPDATED' ? 'connected' : item?.status === 'OUTDATED' ? 'expired' : 'connected',
         last_sync: new Date().toISOString(),
         consent_expires: format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
         balance: mainAccount.balance ?? 0,
@@ -214,23 +241,22 @@ export default function OpenFinance() {
         pluggy_item_id: id,
         pluggy_accounts: pluggyAccounts,
       }
-      if (existing) updateBankConnection(existing.id, connectionData)
+      const found = bankConnectionsRef.current.find((bc) => bc.pluggy_item_id === id)
+      if (found) updateBankConnection(found.id, connectionData)
       else addBankConnection(connectionData)
 
-      const payload = await buildSyncPayload(pluggyAccounts)
-      importPluggySync(payload)
-      setSyncInfo(`✅ ${payload.transactions.length} transações importadas com sucesso`)
-      setTimeout(() => setSyncInfo(null), 6000)
+      if (pluggyAccounts.length > 0) {
+        const payload = await buildSyncPayload(pluggyAccounts)
+        importPluggySync(payload)
+        setSyncInfo(`✅ ${payload.transactions.length} transações importadas com sucesso`)
+      } else {
+        setSyncInfo('✅ Banco conectado. Clique em "Sincronizar" para importar as transações.')
+      }
     } catch (err) {
-      console.error('Error fetching Pluggy data:', err)
-      addBankConnection({
-        bank_name: 'Banco conectado', bank_code: '', account_type: 'checking',
-        status: 'connected', last_sync: new Date().toISOString(),
-        consent_expires: format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-        pluggy_item_id: id,
-      })
+      console.error('[Pluggy] handleSuccess error:', err)
+      setSyncInfo('⚠️ Banco conectado, mas houve um erro ao importar transações. Clique em "Sincronizar".')
     }
-    closeWidget()
+    setTimeout(() => setSyncInfo(null), 8000)
   }
 
   const handleSync = async (bc) => {
@@ -257,6 +283,8 @@ export default function OpenFinance() {
       setTimeout(() => setSyncInfo(null), 6000)
     } catch (err) {
       console.error('Sync error:', err)
+      setSyncInfo(`⚠️ Erro ao sincronizar: ${err.message}`)
+      setTimeout(() => setSyncInfo(null), 8000)
     } finally {
       setSyncing(null)
     }
