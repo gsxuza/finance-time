@@ -25,15 +25,13 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false)
   const panelRef = useRef(null)
 
-  const { transactions, accounts, budgets, goals, recurringItems, readNotificationIds, markNotificationsRead } = useStore((s) => ({
-    transactions: s.transactions,
-    accounts: s.accounts,
-    budgets: s.budgets,
-    goals: s.goals,
-    recurringItems: s.recurringItems,
-    readNotificationIds: s.readNotificationIds,
-    markNotificationsRead: s.markNotificationsRead,
-  }))
+  const transactions = useStore((s) => s.transactions)
+  const accounts = useStore((s) => s.accounts)
+  const budgets = useStore((s) => s.budgets)
+  const goals = useStore((s) => s.goals)
+  const recurringItems = useStore((s) => s.recurringItems)
+  const readNotificationIds = useStore((s) => s.readNotificationIds)
+  const markNotificationsRead = useStore((s) => s.markNotificationsRead)
 
   const notifications = useMemo(
     () => computeNotifications({ transactions, accounts, budgets, goals, recurringItems }),
