@@ -30,7 +30,7 @@ function setSyncStatus(s) {
   localStorage.setItem(STATUS_KEY, JSON.stringify(s))
 }
 
-const SYNC_KEYS = ['accounts', 'transactions', 'budgets', 'categories', 'bankConnections', 'settings']
+const SYNC_KEYS = ['accounts', 'transactions', 'budgets', 'goals', 'recurringItems', 'categories', 'bankConnections', 'settings']
 
 function pickState(s) {
   const out = {}
@@ -60,15 +60,17 @@ export function useNeonSync() {
       })
       .then((d) => {
         if (d.state && typeof d.state === 'object') {
-          const cloudTxCount = d.state.transactions?.length ?? 0
-          const localTxCount = useStore.getState().transactions?.length ?? 0
-          if (cloudTxCount > localTxCount) {
-            // Cloud state may come from a device that predates is_transfer
-            useStore.setState({
-              ...d.state,
-              transactions: markTransfers(d.state.transactions, d.state.accounts),
-            })
+          const local = useStore.getState()
+          // Cloud is ground truth. Merge: cloud wins on all SYNC_KEYS;
+          // any key not yet in cloud (new feature rollout) falls back to local.
+          const merged = {}
+          for (const k of SYNC_KEYS) {
+            merged[k] = d.state[k] !== undefined ? d.state[k] : local[k]
           }
+          useStore.setState({
+            ...merged,
+            transactions: markTransfers(merged.transactions ?? [], merged.accounts ?? []),
+          })
         }
         setSyncStatus({ phase: 'ok', ts: Date.now() })
         loadedRef.current = true
