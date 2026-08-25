@@ -7,6 +7,7 @@ const initialState = {
   transactions: [],
   budgets: [],
   goals: [],
+  recurringItems: [],
   categories: DEFAULT_CATEGORIES,
   bankConnections: [],
   settings: {
@@ -45,6 +46,11 @@ export const useStore = create(
       addBudget: (data) => set((s) => ({ budgets: [...s.budgets, { id: generateId(), ...data }] })),
       updateBudget: (id, data) => set((s) => ({ budgets: s.budgets.map((b) => (b.id === id ? { ...b, ...data } : b)) })),
       deleteBudget: (id) => set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) })),
+
+      // Recurring items (for cash flow projection)
+      addRecurringItem: (data) => set((s) => ({ recurringItems: [...(s.recurringItems || []), { id: generateId(), is_active: true, ...data }] })),
+      updateRecurringItem: (id, data) => set((s) => ({ recurringItems: (s.recurringItems || []).map((r) => (r.id === id ? { ...r, ...data } : r)) })),
+      deleteRecurringItem: (id) => set((s) => ({ recurringItems: (s.recurringItems || []).filter((r) => r.id !== id) })),
 
       // Goals
       addGoal: (data) => set((s) => ({ goals: [...s.goals, { id: generateId(), created_at: new Date().toISOString(), ...data }] })),

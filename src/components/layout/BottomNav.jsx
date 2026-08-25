@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, ArrowLeftRight, MoreHorizontal,
-  Wallet, PiggyBank, Landmark, Sparkles, BarChart3, Settings, X, TrendingUp, Target
+  Wallet, PiggyBank, Landmark, Sparkles, BarChart3, Settings, X, TrendingUp, Target, CalendarRange
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +16,7 @@ const MAIN_NAV = [
 
 const MORE_ITEMS = [
   { to: '/goals', icon: Target, label: 'Metas' },
+  { to: '/cashflow', icon: CalendarRange, label: 'Fluxo de Caixa' },
   { to: '/open-finance', icon: Landmark, label: 'Open Finance' },
   { to: '/ai-insights', icon: Sparkles, label: 'IA & Insights' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { format, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Sparkles, Plus, ArrowRight, Target } from 'lucide-react'
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Sparkles, Plus, ArrowRight, Target, CalendarRange } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, formatDateShort, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -39,7 +39,7 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { transactions, accounts, goals, getTotalBalance, getMonthlyIncome, getMonthlyExpenses } = useStore()
+  const { transactions, accounts, goals, recurringItems = [], getTotalBalance, getMonthlyIncome, getMonthlyExpenses } = useStore()
 
   const totalBalance = getTotalBalance()
   const monthlyIncome = getMonthlyIncome()
@@ -283,6 +283,44 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           )}
+
+          {/* Cash flow projection widget */}
+          {recurringItems.length > 0 && (() => {
+            const activeIncome = recurringItems.filter((r) => r.is_active && r.type === 'income').reduce((s, r) => s + r.amount, 0)
+            const activeExpense = recurringItems.filter((r) => r.is_active && r.type === 'expense').reduce((s, r) => s + r.amount, 0)
+            const net = activeIncome - activeExpense
+            const projected3m = totalBalance + net * 3
+            return (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CalendarRange size={13} className="text-fg-secondary" />
+                      <CardTitle>Projeção 3 meses</CardTitle>
+                    </div>
+                    <button onClick={() => navigate('/cashflow')} className="text-2xs text-fg-muted hover:text-fg transition-colors cursor-pointer flex items-center gap-1">
+                      Ver detalhes <ArrowRight size={10} />
+                    </button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-2xs text-fg-muted">Saldo projetado</p>
+                    <p className={`text-base font-bold tabular-nums ${projected3m >= 0 ? 'text-fg' : 'text-danger'}`}>{formatCurrency(projected3m)}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-2xs text-fg-muted">Resultado/mês</p>
+                    <p className={`text-xs font-semibold tabular-nums ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net >= 0 ? '+' : ''}{formatCurrency(net)}</p>
+                  </div>
+                  {projected3m < 0 && (
+                    <p className="text-2xs text-danger bg-danger-muted rounded-btn px-2 py-1 ring-1 ring-danger/20 text-center">
+                      Saldo negativo projetado — revise recorrências
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })()}
 
           {/* AI Insight */}
           <div className="flex flex-col gap-3">

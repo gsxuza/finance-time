@@ -8,6 +8,7 @@ import Transactions from '@/pages/Transactions'
 import Accounts from '@/pages/Accounts'
 import Budgets from '@/pages/Budgets'
 import Goals from '@/pages/Goals'
+import CashFlow from '@/pages/CashFlow'
 import OpenFinance from '@/pages/OpenFinance'
 import AIInsights from '@/pages/AIInsights'
 import Reports from '@/pages/Reports'
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/budgets" element={<Budgets />} />
             <Route path="/goals" element={<Goals />} />
+            <Route path="/cashflow" element={<CashFlow />} />
             <Route path="/open-finance" element={<OpenFinance />} />
             <Route path="/ai-insights" element={<AIInsights />} />
             <Route path="/reports" element={<Reports />} />
