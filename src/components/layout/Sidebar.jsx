@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, ArrowLeftRight, Wallet, PiggyBank,
   Landmark, Sparkles, BarChart3, Settings,
-  ChevronLeft, ChevronRight, TrendingUp
+  ChevronLeft, ChevronRight, TrendingUp, Target, CalendarRange, Activity
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +13,9 @@ const NAV_ITEMS = [
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
   { to: '/accounts', icon: Wallet, label: 'Contas' },
   { to: '/budgets', icon: PiggyBank, label: 'Orçamentos' },
+  { to: '/goals', icon: Target, label: 'Metas' },
+  { to: '/cashflow', icon: CalendarRange, label: 'Fluxo de Caixa' },
+  { to: '/health-score', icon: Activity, label: 'Score' },
   { to: '/open-finance', icon: Landmark, label: 'Open Finance' },
   { to: '/ai-insights', icon: Sparkles, label: 'IA & Insights' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },

@@ -4,9 +4,10 @@ import { motion } from 'framer-motion'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { format, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Sparkles, Plus, ArrowRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Sparkles, Plus, ArrowRight, Target, Activity } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, formatDateShort, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
+import { computeHealthScore } from '@/lib/healthScore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
@@ -39,7 +40,7 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { transactions, accounts, getTotalBalance, getMonthlyIncome, getMonthlyExpenses } = useStore()
+  const { transactions, accounts, budgets, goals, recurringItems, getTotalBalance, getMonthlyIncome, getMonthlyExpenses } = useStore()
 
   const totalBalance = getTotalBalance()
   const monthlyIncome = getMonthlyIncome()
@@ -47,6 +48,13 @@ export default function Dashboard() {
   const monthlySaving = monthlyIncome - monthlyExpenses
   const savingRate = monthlyIncome > 0 ? (monthlySaving / monthlyIncome) * 100 : 0
   const totalAccounts = accounts.filter((a) => a.is_active).length
+
+  const scoreData = useMemo(
+    () => computeHealthScore({ transactions, accounts, budgets: budgets || [], goals: goals || [], recurringItems: recurringItems || [] }),
+    [transactions, accounts, budgets, goals, recurringItems]
+  )
+
+  const topGoals = useMemo(() => (goals || []).filter((g) => g.current_amount < g.target_amount).slice(0, 3), [goals])
 
   const areaData = useMemo(() => (
     Array.from({ length: 6 }, (_, i) => {
@@ -188,6 +196,93 @@ export default function Dashboard() {
               ) : (
                 <div className="flex items-center justify-center h-32 text-sm text-fg-muted">
                   Sem despesas este mês
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Health Score + Goals */}
+        <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* Score widget */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity size={13} className="text-fg-secondary" />
+                  <CardTitle>Score de Saúde</CardTitle>
+                </div>
+                <button onClick={() => navigate('/health-score')} className="text-2xs text-fg-muted hover:text-fg transition-colors font-medium flex items-center gap-1 cursor-pointer">
+                  Ver detalhes <ArrowRight size={11} />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="flex items-center gap-4">
+                <div className="relative w-16 h-16 shrink-0">
+                  <svg width="64" height="64" className="-rotate-90">
+                    <circle cx="32" cy="32" r="26" fill="none" stroke="var(--color-border)" strokeWidth="6" />
+                    <circle
+                      cx="32" cy="32" r="26"
+                      fill="none"
+                      stroke={scoreData.gradeColor}
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 26}
+                      strokeDashoffset={2 * Math.PI * 26 * (1 - scoreData.total / 100)}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-base font-bold" style={{ color: scoreData.gradeColor }}>{scoreData.grade}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold tabular-nums text-fg">{scoreData.total}<span className="text-xs text-fg-muted font-normal">/100</span></p>
+                  <p className="text-xs text-fg-muted mt-0.5">{scoreData.gradeLabel}</p>
+                  <p className="text-2xs text-fg-muted mt-2 leading-relaxed max-w-[200px]">{scoreData.dimensions[0]?.note}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Goals widget */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target size={13} className="text-fg-secondary" />
+                  <CardTitle>Metas</CardTitle>
+                </div>
+                <button onClick={() => navigate('/goals')} className="text-2xs text-fg-muted hover:text-fg transition-colors font-medium flex items-center gap-1 cursor-pointer">
+                  Ver todas <ArrowRight size={11} />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2">
+              {topGoals.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 gap-2">
+                  <p className="text-xs text-fg-muted">Sem metas ativas</p>
+                  <button onClick={() => navigate('/goals')} className="text-xs text-fg-secondary underline underline-offset-2 cursor-pointer">Criar meta</button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {topGoals.map((g) => {
+                    const pct = g.target_amount > 0 ? Math.min(100, (g.current_amount / g.target_amount) * 100) : 0
+                    return (
+                      <div key={g.id} className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm">{g.icon}</span>
+                            <span className="text-xs text-fg truncate max-w-[140px]">{g.name}</span>
+                          </div>
+                          <span className="text-xs font-semibold tabular-nums" style={{ color: g.color }}>{pct.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-1 bg-bg-elevated rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: g.color }} />
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
