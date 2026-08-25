@@ -1,3 +1,5 @@
+import { callGemini, geminiErrorMessage } from './_gemini.js'
+
 export const config = { maxDuration: 60 }
 
 export default async function handler(req, res) {
@@ -41,27 +43,18 @@ Example output:
 Now extract ALL transactions from ALL pages:`
 
   try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: 'application/pdf', data: pdfBase64 } },
-              { text: prompt },
-            ],
-          }],
-          generationConfig: { maxOutputTokens: 8192, temperature: 0 },
-        }),
-      }
-    )
-
-    const data = await geminiRes.json()
+    const { res: geminiRes, data, overloaded } = await callGemini(apiKey, {
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: 'application/pdf', data: pdfBase64 } },
+          { text: prompt },
+        ],
+      }],
+      generationConfig: { maxOutputTokens: 8192, temperature: 0 },
+    })
 
     if (!geminiRes.ok) {
-      return res.status(500).json({ error: data.error?.message || 'Gemini API error' })
+      return res.status(overloaded ? 503 : 500).json({ error: geminiErrorMessage(data, overloaded) })
     }
 
     const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim()

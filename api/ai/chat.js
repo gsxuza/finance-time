@@ -1,3 +1,5 @@
+import { callGemini, geminiErrorMessage } from './_gemini.js'
+
 export const config = { runtime: 'edge' }
 
 export default async function handler(req) {
@@ -90,22 +92,17 @@ INSTRUÇÕES:
   ]
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents,
-          generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
-        }),
-      }
-    )
+    const { res, data, overloaded } = await callGemini(apiKey, {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
+    })
 
-    const data = await res.json()
     if (!res.ok) {
-      return new Response(JSON.stringify({ error: data.error?.message || 'Gemini API error' }), { status: 500 })
+      return new Response(
+        JSON.stringify({ error: geminiErrorMessage(data, overloaded) }),
+        { status: overloaded ? 503 : 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || ''

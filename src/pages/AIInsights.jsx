@@ -68,6 +68,8 @@ export default function AIInsights() {
     } catch (err) {
       setError(err.message)
       setMessages((prev) => prev.slice(0, -1))
+      // Put the text back so a transient failure doesn't cost the user their message
+      setInput(msg)
     } finally {
       setLoading(false)
       inputRef.current?.focus()
@@ -113,7 +115,7 @@ export default function AIInsights() {
 
         {error && (
           <div className="text-center text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2">
-            {error} — tente novamente
+            {error}
           </div>
         )}
 
