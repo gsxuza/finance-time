@@ -33,63 +33,61 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-bg">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-lg mb-4">
-            <TrendingUp size={28} className="text-white" />
+          <div className="w-14 h-14 rounded-card bg-bg-elevated ring-1 ring-border flex items-center justify-center mb-4">
+            <TrendingUp size={22} className="text-fg" />
           </div>
-          <h1 className="text-2xl font-bold text-gradient">Finance Time</h1>
-          <p className="text-sm text-slate-500 mt-1">Gestão financeira pessoal</p>
+          <h1 className="text-xl font-bold text-fg">Finance Time</h1>
+          <p className="text-sm text-fg-muted mt-1">Gestão financeira pessoal</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-xl p-8">
+        <div className="bg-bg-surface rounded-card ring-1 ring-border p-7">
           <div className="flex items-center gap-2 mb-6">
-            <Lock size={16} className="text-slate-400" />
-            <p className="text-sm font-medium text-slate-600">Acesso protegido</p>
+            <Lock size={13} className="text-fg-muted" />
+            <p className="text-xs font-medium text-fg-secondary">Acesso protegido</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Senha</label>
+              <label className="text-xs font-medium text-fg-secondary mb-1.5 block">Senha</label>
               <div className="relative">
                 <input
                   type={show ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError('') }}
                   placeholder="Digite sua senha"
-                  className="w-full px-4 py-3 pr-11 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-2.5 pr-11 rounded-input bg-bg-elevated ring-1 ring-border text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-border-strong transition-all"
                   autoFocus
                 />
                 <button
                   type="button"
                   onClick={() => setShow(!show)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg cursor-pointer transition-colors"
                 >
-                  {show ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {show ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
               {error && (
-                <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
-                  {error}
-                </p>
+                <p className="text-xs text-danger mt-1.5">{error}</p>
               )}
             </div>
 
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-3 rounded-xl gradient-primary text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all hover:opacity-90 cursor-pointer"
+              className="w-full py-2.5 rounded-btn bg-fg text-bg font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-fg/90 cursor-pointer"
             >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+              {loading ? <Loader2 size={15} className="animate-spin" /> : null}
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
+        <p className="text-center text-2xs text-fg-muted mt-5">
           Finance Time · Acesso privado
         </p>
       </div>

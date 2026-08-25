@@ -43,16 +43,16 @@ function AccountForm({ onClose, initial }) {
         <Input label="Limite de crédito (R$)" type="number" step="0.01" value={form.credit_limit} onChange={(e) => set('credit_limit', e.target.value)} />
       )}
       <div>
-        <label className="text-sm font-medium text-slate-700 mb-2 block">Cor</label>
+        <label className="text-xs font-medium text-fg-secondary mb-2 block">Cor</label>
         <div className="flex gap-2">
           {COLORS.map((c) => (
-            <button type="button" key={c} onClick={() => set('color', c)} className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${form.color === c ? 'border-slate-800 scale-110' : 'border-transparent'}`} style={{ background: c }} />
+            <button type="button" key={c} onClick={() => set('color', c)} className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${form.color === c ? 'border-fg scale-110' : 'border-transparent opacity-60 hover:opacity-100'}`} style={{ background: c }} />
           ))}
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <input type="checkbox" id="active" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} className="accent-blue-500" />
-        <label htmlFor="active" className="text-sm text-slate-700 cursor-pointer">Conta ativa</label>
+        <input type="checkbox" id="active" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} className="accent-fg" />
+        <label htmlFor="active" className="text-sm text-fg-secondary cursor-pointer">Conta ativa</label>
       </div>
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
@@ -73,9 +73,9 @@ export default function Accounts() {
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-slate-900">Contas</h1>
+        <h1 className="text-lg font-semibold text-fg">Contas</h1>
         <div className="flex gap-2">
-          <button onClick={() => setHideBalances(!hideBalances)} className="p-2 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 cursor-pointer">
+          <button onClick={() => setHideBalances(!hideBalances)} className="p-2 rounded-btn bg-bg-elevated text-fg-muted hover:bg-bg-hover hover:text-fg cursor-pointer transition-colors">
             {hideBalances ? <Eye size={16} /> : <EyeOff size={16} />}
           </button>
           <Button onClick={() => setModal('new')} size="sm"><Plus size={16} /> Nova</Button>
@@ -83,10 +83,10 @@ export default function Accounts() {
       </div>
 
       {/* Patrimônio */}
-      <div className="gradient-primary rounded-2xl p-5 mb-5 text-white">
-        <p className="text-sm text-white/80 mb-1">Patrimônio Total</p>
-        <p className="text-3xl font-bold">{hideBalances ? '••••••' : formatCurrency(totalBalance)}</p>
-        {totalDebt > 0 && <p className="text-sm text-white/70 mt-1">Dívida cartões: {hideBalances ? '•••' : formatCurrency(totalDebt)}</p>}
+      <div className="bg-bg-surface ring-1 ring-border rounded-card p-5 mb-5">
+        <p className="text-xs text-fg-muted font-medium uppercase tracking-widest mb-2">Patrimônio Total</p>
+        <p className="text-3xl font-bold text-fg tabular-nums">{hideBalances ? '••••••' : formatCurrency(totalBalance)}</p>
+        {totalDebt > 0 && <p className="text-sm text-danger mt-2">Dívida cartões: {hideBalances ? '•••' : formatCurrency(totalDebt)}</p>}
       </div>
 
       {/* Accounts grid */}
@@ -98,33 +98,33 @@ export default function Accounts() {
               <CardContent className="pt-5">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: acc.color + '22' }}>
+                    <div className="w-9 h-9 rounded-btn flex items-center justify-center text-base bg-bg-elevated shrink-0">
                       {acc.icon || ACCOUNT_TYPE_ICONS[acc.type]}
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-800 text-sm">{acc.name}</p>
-                      <p className="text-xs text-slate-400">{ACCOUNT_TYPE_LABELS[acc.type]}</p>
+                      <p className="font-medium text-fg text-sm">{acc.name}</p>
+                      <p className="text-2xs text-fg-muted">{ACCOUNT_TYPE_LABELS[acc.type]}</p>
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 items-center">
                     {!acc.is_active && <Badge variant="default">Inativa</Badge>}
-                    <button onClick={() => setModal(acc)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer"><Edit2 size={14} /></button>
-                    <button onClick={() => deleteAccount(acc.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 cursor-pointer"><Trash2 size={14} /></button>
+                    <button onClick={() => setModal(acc)} className="p-1.5 rounded-btn hover:bg-bg-hover text-fg-muted hover:text-fg cursor-pointer transition-colors"><Edit2 size={13} /></button>
+                    <button onClick={() => deleteAccount(acc.id)} className="p-1.5 rounded-btn hover:bg-danger-muted text-fg-muted hover:text-danger cursor-pointer transition-colors"><Trash2 size={13} /></button>
                   </div>
                 </div>
-                <p className={`text-2xl font-bold ${acc.balance >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>
+                <p className={`text-2xl font-bold tabular-nums ${acc.balance >= 0 ? 'text-fg' : 'text-danger'}`}>
                   {hideBalances ? '••••' : formatCurrency(acc.balance)}
                 </p>
                 {acc.credit_limit && (
                   <div className="mt-3">
-                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                    <div className="flex justify-between text-2xs text-fg-muted mb-1.5">
                       <span>Usado: {hideBalances ? '•••' : formatCurrency(Math.abs(acc.balance))}</span>
                       <span>Limite: {hideBalances ? '•••' : formatCurrency(acc.credit_limit)}</span>
                     </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, usedPercent)}%`, background: usedPercent > 80 ? '#f43f5e' : '#3b82f6' }} />
+                    <div className="h-1 bg-bg-elevated rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, usedPercent)}%`, background: usedPercent > 80 ? '#f87171' : '#60a5fa' }} />
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">Disponível: {hideBalances ? '•••' : formatCurrency(Math.max(0, acc.credit_limit - Math.abs(acc.balance)))}</p>
+                    <p className="text-2xs text-fg-muted mt-1.5">Disponível: {hideBalances ? '•••' : formatCurrency(Math.max(0, acc.credit_limit - Math.abs(acc.balance)))}</p>
                   </div>
                 )}
               </CardContent>
@@ -133,7 +133,7 @@ export default function Accounts() {
         })}
 
         {/* Add new card */}
-        <button onClick={() => setModal('new')} className="border-2 border-dashed border-slate-200 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-blue-500 hover:border-blue-200 hover:bg-blue-50/50 transition-all cursor-pointer min-h-[140px]">
+        <button onClick={() => setModal('new')} className="border border-dashed border-border rounded-card p-5 flex flex-col items-center justify-center gap-2 text-fg-muted hover:text-fg hover:border-border-strong hover:bg-bg-elevated transition-all cursor-pointer min-h-[140px]">
           <Plus size={24} />
           <span className="text-sm font-medium">Nova conta</span>
         </button>

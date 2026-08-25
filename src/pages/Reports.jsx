@@ -49,12 +49,12 @@ export default function Reports() {
   return (
     <div className="p-4 lg:p-6 max-w-4xl mx-auto print:p-0">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-slate-900">Relatórios</h1>
+        <h1 className="text-lg font-semibold text-fg">Relatórios</h1>
         <div className="flex gap-2">
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 rounded-btn bg-bg-elevated ring-1 ring-border text-sm text-fg focus:outline-none cursor-pointer"
           >
             {months.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
@@ -66,26 +66,26 @@ export default function Reports() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp size={14} className="text-emerald-600" />
-            <p className="text-xs font-medium text-emerald-600">Receitas</p>
+        <div className="bg-bg-surface ring-1 ring-border rounded-card p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp size={13} className="text-success" />
+            <p className="text-2xs font-medium text-fg-muted">Receitas</p>
           </div>
-          <p className="text-xl font-bold text-emerald-700">{formatCurrency(selectedData.income)}</p>
+          <p className="text-xl font-bold text-success tabular-nums">{formatCurrency(selectedData.income)}</p>
         </div>
-        <div className="bg-rose-50 rounded-2xl p-4 border border-rose-100">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingDown size={14} className="text-rose-500" />
-            <p className="text-xs font-medium text-rose-500">Despesas</p>
+        <div className="bg-bg-surface ring-1 ring-border rounded-card p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingDown size={13} className="text-danger" />
+            <p className="text-2xs font-medium text-fg-muted">Despesas</p>
           </div>
-          <p className="text-xl font-bold text-rose-600">{formatCurrency(selectedData.expenses)}</p>
+          <p className="text-xl font-bold text-danger tabular-nums">{formatCurrency(selectedData.expenses)}</p>
         </div>
-        <div className={`rounded-2xl p-4 border ${selectedData.balance >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
-          <div className="flex items-center gap-2 mb-1">
-            <DollarSign size={14} className={selectedData.balance >= 0 ? 'text-blue-600' : 'text-red-500'} />
-            <p className={`text-xs font-medium ${selectedData.balance >= 0 ? 'text-blue-600' : 'text-red-500'}`}>Saldo</p>
+        <div className="bg-bg-surface ring-1 ring-border rounded-card p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <DollarSign size={13} className={selectedData.balance >= 0 ? 'text-success' : 'text-danger'} />
+            <p className="text-2xs font-medium text-fg-muted">Saldo</p>
           </div>
-          <p className={`text-xl font-bold ${selectedData.balance >= 0 ? 'text-blue-700' : 'text-red-600'}`}>{formatCurrency(selectedData.balance)}</p>
+          <p className={`text-xl font-bold tabular-nums ${selectedData.balance >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(selectedData.balance)}</p>
         </div>
       </div>
 
@@ -95,11 +95,11 @@ export default function Reports() {
         <CardContent className="pt-0">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={monthlyData} barGap={4}>
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#555555' }} axisLine={false} tickLine={false} />
               <YAxis hide />
-              <Tooltip formatter={(v) => formatCurrency(v)} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }} />
-              <Bar dataKey="Receitas" fill="#10b981" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="Despesas" fill="#f43f5e" radius={[6, 6, 0, 0]} />
+              <Tooltip formatter={(v) => formatCurrency(v)} contentStyle={{ borderRadius: 8, border: '1px solid #222', background: '#161616', fontSize: 12, color: '#f0f0f0' }} />
+              <Bar dataKey="Receitas" fill="#4ade80" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Despesas" fill="#f87171" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -120,7 +120,7 @@ export default function Reports() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-48 text-sm text-slate-400">Sem despesas no período</div>
+              <div className="flex items-center justify-center h-48 text-sm text-fg-muted">Sem despesas no período</div>
             )}
           </CardContent>
         </Card>
@@ -132,23 +132,23 @@ export default function Reports() {
             {selectedData.byCategory.length === 0 ? (
               <p className="text-sm text-slate-400 py-8 text-center">Sem dados</p>
             ) : (
-              <div className="flex flex-col divide-y divide-slate-50">
+              <div className="flex flex-col divide-y divide-border-subtle">
                 {selectedData.byCategory.map((c, i) => {
                   const cat = DEFAULT_CATEGORIES.find((x) => x.name === c.name)
                   const pct = selectedData.expenses > 0 ? (c.value / selectedData.expenses) * 100 : 0
                   return (
                     <div key={c.name} className="flex items-center gap-2 py-2.5">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                      <span className="text-xs text-slate-400 mr-1">{cat?.icon}</span>
-                      <span className="text-xs text-slate-700 flex-1 truncate">{c.name}</span>
-                      <span className="text-xs text-slate-400">{pct.toFixed(0)}%</span>
-                      <span className="text-xs font-semibold text-slate-800 w-24 text-right">{formatCurrency(c.value)}</span>
+                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                      <span className="text-xs text-fg-muted mr-1">{cat?.icon}</span>
+                      <span className="text-xs text-fg-secondary flex-1 truncate">{c.name}</span>
+                      <span className="text-2xs text-fg-muted">{pct.toFixed(0)}%</span>
+                      <span className="text-xs font-semibold text-fg w-24 text-right tabular-nums">{formatCurrency(c.value)}</span>
                     </div>
                   )
                 })}
                 <div className="flex items-center justify-between pt-2.5">
-                  <span className="text-xs font-semibold text-slate-700">Total despesas</span>
-                  <span className="text-sm font-bold text-rose-500">{formatCurrency(selectedData.expenses)}</span>
+                  <span className="text-xs font-medium text-fg-secondary">Total despesas</span>
+                  <span className="text-sm font-bold text-danger tabular-nums">{formatCurrency(selectedData.expenses)}</span>
                 </div>
               </div>
             )}
@@ -163,19 +163,19 @@ export default function Reports() {
         </CardHeader>
         <CardContent className="pt-0">
           {selectedData.txs.length === 0 ? (
-            <p className="text-sm text-slate-400 py-8 text-center">Sem transações no período</p>
+            <p className="text-sm text-fg-muted py-8 text-center">Sem transações no período</p>
           ) : (
-            <div className="divide-y divide-slate-50">
+            <div className="divide-y divide-border-subtle">
               {[...selectedData.txs].sort((a, b) => b.date.localeCompare(a.date)).map((tx) => {
                 const cat = DEFAULT_CATEGORIES.find((c) => c.name === tx.category)
                 return (
                   <div key={tx.id} className="flex items-center gap-3 py-2.5">
                     <span className="text-base">{cat?.icon || '📦'}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-800 truncate">{tx.description || tx.category}</p>
-                      <p className="text-xs text-slate-400">{tx.category} · {tx.date}</p>
+                      <p className="text-xs font-medium text-fg truncate">{tx.description || tx.category}</p>
+                      <p className="text-2xs text-fg-muted">{tx.category} · {tx.date}</p>
                     </div>
-                    <span className={`text-xs font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                    <span className={`text-xs font-bold tabular-nums ${tx.type === 'income' ? 'text-success' : 'text-danger'}`}>
                       {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                     </span>
                   </div>

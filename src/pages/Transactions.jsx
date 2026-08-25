@@ -64,13 +64,13 @@ function TransactionForm({ onClose, initial }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {/* Type toggle */}
-      <div className="flex rounded-xl bg-slate-100 p-1 gap-1">
+      <div className="flex rounded-btn bg-bg-elevated ring-1 ring-border p-1 gap-1">
         {['expense', 'income'].map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => set('type', t)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${form.type === t ? (t === 'income' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white') : 'text-slate-500'}`}
+            className={`flex-1 py-2 rounded-btn text-sm font-medium transition-all cursor-pointer ${form.type === t ? (t === 'income' ? 'bg-success-muted text-success ring-1 ring-success/20' : 'bg-danger-muted text-danger ring-1 ring-danger/20') : 'text-fg-muted hover:text-fg'}`}
           >
             {t === 'income' ? '↑ Receita' : '↓ Despesa'}
           </button>
@@ -110,7 +110,7 @@ function TransactionForm({ onClose, initial }) {
 
       <div className="flex items-center gap-3">
         <input type="checkbox" id="recurring" checked={form.is_recurring} onChange={(e) => set('is_recurring', e.target.checked)} className="accent-blue-500" />
-        <label htmlFor="recurring" className="text-sm text-slate-700 cursor-pointer">Transação recorrente</label>
+        <label htmlFor="recurring" className="text-sm text-fg-secondary cursor-pointer">Transação recorrente</label>
         {form.is_recurring && (
           <Select value={form.recurring_frequency} onChange={(e) => set('recurring_frequency', e.target.value)} className="!py-1.5">
             <option value="weekly">Semanal</option>
@@ -168,7 +168,7 @@ export default function Transactions() {
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-slate-900">Transações</h1>
+        <h1 className="text-lg font-semibold text-fg">Transações</h1>
         <div className="flex gap-2">
           <ImportCSVButton />
           <Button onClick={() => setModal('new')} size="sm">
@@ -179,31 +179,31 @@ export default function Transactions() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-emerald-50 rounded-2xl p-4">
-          <p className="text-xs text-emerald-600 font-medium">Receitas</p>
-          <p className="text-lg font-bold text-emerald-700">{formatCurrency(totalIncome)}</p>
+        <div className="bg-bg-surface ring-border ring-1 rounded-card p-4">
+          <p className="text-xs text-fg-muted font-medium mb-1">Receitas</p>
+          <p className="text-lg font-bold text-success">{formatCurrency(totalIncome)}</p>
         </div>
-        <div className="bg-rose-50 rounded-2xl p-4">
-          <p className="text-xs text-rose-500 font-medium">Despesas</p>
-          <p className="text-lg font-bold text-rose-600">{formatCurrency(totalExpense)}</p>
+        <div className="bg-bg-surface ring-border ring-1 rounded-card p-4">
+          <p className="text-xs text-fg-muted font-medium mb-1">Despesas</p>
+          <p className="text-lg font-bold text-danger">{formatCurrency(totalExpense)}</p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted" />
           <input
-            className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-8 pr-3 py-2 rounded-btn bg-bg-elevated ring-1 ring-border text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-border-strong transition-all"
             placeholder="Buscar transações..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select value={period} onChange={(e) => setPeriod(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select value={period} onChange={(e) => setPeriod(e.target.value)} className="px-3 py-2 rounded-btn bg-bg-elevated ring-1 ring-border text-sm text-fg focus:outline-none">
           {PERIOD_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2 rounded-btn bg-bg-elevated ring-1 ring-border text-sm text-fg focus:outline-none">
           <option value="all">Todos tipos</option>
           <option value="income">Receitas</option>
           <option value="expense">Despesas</option>
@@ -212,8 +212,8 @@ export default function Transactions() {
 
       {/* Grouped list */}
       {grouped.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">
-          <p className="text-4xl mb-2">📭</p>
+        <div className="text-center py-16 text-fg-muted">
+          <p className="text-4xl mb-3">📭</p>
           <p className="text-sm">Nenhuma transação encontrada</p>
         </div>
       ) : (
@@ -223,35 +223,35 @@ export default function Transactions() {
             return (
               <div key={date}>
                 <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-xs font-semibold text-slate-500">{formatDate(date)}</span>
-                  <span className={`text-xs font-medium ${dayTotal >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                  <span className="text-xs font-medium text-fg-muted">{formatDate(date)}</span>
+                  <span className={`text-xs font-medium ${dayTotal >= 0 ? 'text-success' : 'text-danger'}`}>
                     {dayTotal >= 0 ? '+' : ''}{formatCurrency(dayTotal)}
                   </span>
                 </div>
                 <Card>
-                  <div className="divide-y divide-slate-50">
+                  <div className="divide-y divide-border-subtle">
                     {txs.map((tx) => {
                       const cat = DEFAULT_CATEGORIES.find((c) => c.name === tx.category)
                       return (
-                        <div key={tx.id} className="flex items-center gap-3 px-5 py-3 group">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: (cat?.color || '#94a3b8') + '22' }}>
-                            {cat?.icon || '📦'}
+                        <div key={tx.id} className="flex items-center gap-3 px-5 py-3 group hover:bg-bg-elevated transition-colors">
+                          <div className="w-9 h-9 rounded-btn flex items-center justify-center text-base shrink-0 bg-bg-elevated">
+                            {tx.is_transfer ? '↔' : (cat?.icon || '📦')}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-800 truncate">{tx.description || tx.category}</p>
+                            <p className="text-sm text-fg truncate">{tx.description || tx.category}</p>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-xs text-slate-400">{tx.category}</span>
-                              {tx.is_recurring && <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">🔄 {tx.recurring_frequency}</span>}
-                              {tx.is_transfer && <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">↔ Transferência</span>}
+                              <span className="text-2xs text-fg-muted">{tx.category}</span>
+                              {tx.is_recurring && <span className="text-2xs bg-blue-muted text-blue px-1.5 py-0.5 rounded-badge">🔄 {tx.recurring_frequency}</span>}
+                              {tx.is_transfer && <span className="text-2xs bg-bg-elevated text-fg-muted px-1.5 py-0.5 rounded-badge ring-1 ring-border">↔ Transferência</span>}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`text-sm font-bold ${tx.is_transfer ? 'text-slate-400' : tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                              {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                            <span className={`text-sm font-semibold tabular-nums ${tx.is_transfer ? 'text-fg-muted' : tx.type === 'income' ? 'text-success' : 'text-danger'}`}>
+                              {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount)}
                             </span>
                             <div className="hidden group-hover:flex gap-1">
-                              <button onClick={() => setModal(tx)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer"><Edit2 size={14} /></button>
-                              <button onClick={() => deleteTransaction(tx.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 cursor-pointer"><Trash2 size={14} /></button>
+                              <button onClick={() => setModal(tx)} className="p-1.5 rounded-btn hover:bg-bg-hover text-fg-muted hover:text-fg cursor-pointer transition-colors"><Edit2 size={13} /></button>
+                              <button onClick={() => deleteTransaction(tx.id)} className="p-1.5 rounded-btn hover:bg-danger-muted text-fg-muted hover:text-danger cursor-pointer transition-colors"><Trash2 size={13} /></button>
                             </div>
                           </div>
                         </div>

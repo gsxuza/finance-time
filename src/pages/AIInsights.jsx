@@ -47,10 +47,10 @@ function Message({ msg }) {
   const isUser = msg.role === 'user'
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isUser ? 'bg-blue-500' : 'bg-gradient-to-br from-violet-500 to-blue-500'}`}>
-        {isUser ? <User size={14} className="text-white" /> : <Bot size={14} className="text-white" />}
+      <div className={`w-7 h-7 rounded-btn flex items-center justify-center shrink-0 ${isUser ? 'bg-fg' : 'bg-bg-elevated ring-1 ring-border'}`}>
+        {isUser ? <User size={13} className="text-bg" /> : <Bot size={13} className="text-fg-secondary" />}
       </div>
-      <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed space-y-0.5 ${isUser ? 'bg-blue-500 text-white rounded-tr-sm' : 'bg-white border border-slate-100 text-slate-700 rounded-tl-sm shadow-sm'}`}>
+      <div className={`max-w-[82%] rounded-card px-4 py-3 text-sm leading-relaxed space-y-0.5 ${isUser ? 'bg-fg text-bg rounded-tr-sm font-medium' : 'bg-bg-surface ring-1 ring-border text-fg-secondary rounded-tl-sm'}`}>
         {isUser ? msg.content : <FormattedText text={msg.content} />}
       </div>
     </div>
@@ -129,35 +129,35 @@ export default function AIInsights() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] lg:h-screen max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 lg:px-6 py-4 border-b border-slate-100 bg-white shrink-0">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
-          <Sparkles size={16} className="text-white" />
+      <div className="flex items-center gap-3 px-4 lg:px-6 py-4 border-b border-border bg-bg-surface shrink-0">
+        <div className="w-8 h-8 rounded-btn bg-violet-muted ring-1 ring-violet/20 flex items-center justify-center">
+          <Sparkles size={14} className="text-violet" />
         </div>
         <div>
-          <h1 className="text-base font-bold text-slate-900">Finance AI</h1>
-          <p className="text-xs text-slate-400">Assistente financeiro pessoal</p>
+          <h1 className="text-sm font-semibold text-fg">Finance AI</h1>
+          <p className="text-2xs text-fg-muted">Assistente financeiro pessoal</p>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 space-y-4 bg-slate-50">
+      <div className="flex-1 overflow-y-auto scrollbar-dark px-4 lg:px-6 py-5 space-y-4 bg-bg">
         {messages.map((msg, i) => (
           <Message key={i} msg={msg} />
         ))}
 
         {loading && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shrink-0">
-              <Bot size={14} className="text-white" />
+            <div className="w-7 h-7 rounded-btn bg-bg-elevated ring-1 ring-border flex items-center justify-center shrink-0">
+              <Bot size={13} className="text-fg-secondary" />
             </div>
-            <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-              <Loader2 size={16} className="animate-spin text-violet-400" />
+            <div className="bg-bg-surface ring-1 ring-border rounded-card rounded-tl-sm px-4 py-3">
+              <Loader2 size={14} className="animate-spin text-violet" />
             </div>
           </div>
         )}
 
         {error && (
-          <div className="text-center text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2">
+          <div className="text-center text-xs text-danger bg-danger-muted ring-1 ring-danger/20 rounded-btn px-4 py-2">
             {error}
           </div>
         )}
@@ -167,15 +167,15 @@ export default function AIInsights() {
 
       {/* Quick actions */}
       {messages.length <= 1 && (
-        <div className="px-4 lg:px-6 py-3 bg-white border-t border-slate-100 shrink-0">
-          <p className="text-xs text-slate-400 mb-2">Sugestões rápidas:</p>
-          <div className="flex flex-wrap gap-2">
+        <div className="px-4 lg:px-6 py-3 bg-bg-surface border-t border-border shrink-0">
+          <p className="text-2xs text-fg-muted mb-2">Sugestões:</p>
+          <div className="flex flex-wrap gap-1.5">
             {QUICK_ACTIONS.map((action) => (
               <button
                 key={action}
                 onClick={() => sendMessage(action)}
                 disabled={loading}
-                className="text-xs bg-violet-50 text-violet-600 border border-violet-100 rounded-full px-3 py-1.5 hover:bg-violet-100 transition-colors cursor-pointer disabled:opacity-50"
+                className="text-2xs bg-bg-elevated text-fg-secondary ring-1 ring-border rounded-pill px-3 py-1.5 hover:bg-bg-hover hover:text-fg transition-colors cursor-pointer disabled:opacity-50"
               >
                 {action}
               </button>
@@ -185,7 +185,7 @@ export default function AIInsights() {
       )}
 
       {/* Input */}
-      <div className="px-4 lg:px-6 py-3 bg-white border-t border-slate-100 shrink-0">
+      <div className="px-4 lg:px-6 py-3 bg-bg-surface border-t border-border shrink-0">
         <div className="flex gap-2 items-end">
           <textarea
             ref={inputRef}
@@ -194,18 +194,18 @@ export default function AIInsights() {
             onKeyDown={handleKeyDown}
             placeholder="Pergunte sobre suas finanças..."
             rows={1}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent max-h-32 overflow-y-auto"
+            className="flex-1 px-4 py-2.5 rounded-btn bg-bg-elevated ring-1 ring-border text-sm text-fg placeholder-fg-muted resize-none focus:outline-none focus:ring-border-strong transition-all max-h-32 overflow-y-auto scrollbar-dark"
             style={{ minHeight: '42px' }}
           />
           <button
             onClick={() => sendMessage()}
             disabled={!input.trim() || loading}
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shrink-0 disabled:opacity-40 hover:opacity-90 transition-opacity cursor-pointer"
+            className="w-10 h-10 rounded-btn bg-fg flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-fg/90 transition-colors cursor-pointer"
           >
-            {loading ? <Loader2 size={16} className="text-white animate-spin" /> : <Send size={16} className="text-white" />}
+            {loading ? <Loader2 size={15} className="text-bg animate-spin" /> : <Send size={15} className="text-bg" />}
           </button>
         </div>
-        <p className="text-xs text-slate-300 mt-1.5 text-center">Enter para enviar · Shift+Enter para nova linha</p>
+        <p className="text-2xs text-fg-muted mt-1.5 text-center">Enter para enviar · Shift+Enter para nova linha</p>
       </div>
     </div>
   )

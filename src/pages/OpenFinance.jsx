@@ -172,46 +172,46 @@ function ConnectionCard({ bc, onSync, onReconnect, onRevoke, onDelete, isSyncing
       <CardContent className="pt-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1">
-            <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-xl shrink-0 font-bold text-slate-600">
+            <div className="w-10 h-10 rounded-btn bg-bg-elevated ring-1 ring-border flex items-center justify-center text-sm shrink-0 font-bold text-fg-secondary">
               {bc.bank_name?.slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <p className="font-semibold text-slate-800">{bc.bank_name}</p>
+                <p className="font-semibold text-fg text-sm">{bc.bank_name}</p>
                 <StatusBadge status={bc.status} />
                 {expiryDays !== null && expiryDays < 7 && (
-                  <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                  <span className="flex items-center gap-1 text-xs text-warning bg-warning-muted px-2 py-0.5 rounded-badge ring-1 ring-warning/20">
                     <AlertTriangle size={10} />
                     {expiryDays < 0 ? 'Expirado' : `Expira em ${expiryDays}d`}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-fg-muted">
                 {bc.account_number || '****'} ·{' '}
                 {bc.account_type === 'checking' ? 'Conta Corrente' : bc.account_type === 'savings' ? 'Poupança' : bc.account_type === 'credit_card' ? 'Cartão' : 'Investimento'}
               </p>
               {bc.balance !== undefined && (
-                <p className="text-lg font-bold text-slate-800 mt-1">{formatCurrency(bc.balance)}</p>
+                <p className="text-base font-bold text-fg mt-1 tabular-nums">{formatCurrency(bc.balance)}</p>
               )}
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-2xs text-fg-muted mt-0.5">
                 Sync: {bc.last_sync ? new Date(bc.last_sync).toLocaleString('pt-BR') : 'Nunca'}
               </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5 shrink-0">
-            <button onClick={onSync} disabled={isSyncing} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 cursor-pointer transition-colors disabled:opacity-50">
+            <button onClick={onSync} disabled={isSyncing} className="flex items-center gap-1 text-xs text-blue hover:text-blue/80 cursor-pointer transition-colors disabled:opacity-50">
               {isSyncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Sincronizar
             </button>
             {bc.pluggy_item_id && (
-              <button onClick={onReconnect} className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 cursor-pointer transition-colors">
+              <button onClick={onReconnect} className="flex items-center gap-1 text-xs text-violet hover:text-violet/80 cursor-pointer transition-colors">
                 <ExternalLink size={12} /> Reconectar
               </button>
             )}
-            <button onClick={onRevoke} className="flex items-center gap-1 text-xs text-slate-400 hover:text-amber-600 cursor-pointer transition-colors">
+            <button onClick={onRevoke} className="flex items-center gap-1 text-xs text-fg-muted hover:text-warning cursor-pointer transition-colors">
               <Unlink size={12} /> Revogar
             </button>
-            <button onClick={onDelete} className="flex items-center gap-1 text-xs text-slate-300 hover:text-red-500 cursor-pointer transition-colors">
+            <button onClick={onDelete} className="flex items-center gap-1 text-xs text-fg-muted hover:text-danger cursor-pointer transition-colors">
               <X size={12} /> Remover
             </button>
           </div>
@@ -370,8 +370,8 @@ export default function OpenFinance() {
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Open Finance</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Powered by Pluggy</p>
+          <h1 className="text-lg font-semibold text-fg">Open Finance</h1>
+          <p className="text-2xs text-fg-muted mt-0.5">Powered by Pluggy</p>
         </div>
         <Button onClick={() => openWidget()} size="sm" disabled={connecting || !!widgetToken}>
           {connecting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
@@ -380,15 +380,15 @@ export default function OpenFinance() {
       </div>
 
       {/* Security info */}
-      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-5">
+      <div className="bg-blue-muted ring-1 ring-blue/20 rounded-card p-4 mb-5">
         <div className="flex items-start gap-3">
-          <span className="text-xl">🔒</span>
+          <span className="text-lg">🔒</span>
           <div>
-            <p className="text-sm font-semibold text-blue-800">Conexão segura via Pluggy</p>
-            <p className="text-xs text-blue-600 mt-0.5">
+            <p className="text-sm font-semibold text-blue">Conexão segura via Pluggy</p>
+            <p className="text-xs text-fg-muted mt-0.5">
               Open Finance regulamentado pelo Banco Central · OAuth 2.0 · Criptografia ponta a ponta · Consentimento revogável a qualquer momento
             </p>
-            <a href="https://pluggy.ai" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 underline mt-1 flex items-center gap-1">
+            <a href="https://pluggy.ai" target="_blank" rel="noopener noreferrer" className="text-xs text-blue/70 underline mt-1 flex items-center gap-1 hover:text-blue transition-colors">
               Saiba mais sobre a Pluggy <ExternalLink size={10} />
             </a>
           </div>
@@ -396,19 +396,19 @@ export default function OpenFinance() {
       </div>
 
       {syncInfo && (
-        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-5 flex items-center gap-3">
-          <p className="text-sm text-emerald-700">{syncInfo}</p>
+        <div className="bg-success-muted ring-1 ring-success/20 rounded-card p-4 mb-5 flex items-center gap-3">
+          <p className="text-sm text-success">{syncInfo}</p>
         </div>
       )}
 
       {connectError && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-5 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+        <div className="bg-danger-muted ring-1 ring-danger/20 rounded-card p-4 mb-5 flex items-start gap-3">
+          <AlertTriangle size={15} className="text-danger shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-red-700">Erro ao conectar</p>
-            <p className="text-xs text-red-600 mt-0.5">{connectError}</p>
+            <p className="text-sm font-semibold text-danger">Erro ao conectar</p>
+            <p className="text-xs text-fg-muted mt-0.5">{connectError}</p>
           </div>
-          <button onClick={() => setConnectError(null)} className="ml-auto text-red-400 hover:text-red-600 cursor-pointer">
+          <button onClick={() => setConnectError(null)} className="ml-auto text-fg-muted hover:text-fg cursor-pointer transition-colors">
             <X size={14} />
           </button>
         </div>
@@ -418,12 +418,12 @@ export default function OpenFinance() {
       {widgetToken && (
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-slate-700">Selecione seu banco abaixo:</p>
-            <button onClick={closeWidget} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-              <X size={16} />
+            <p className="text-xs font-medium text-fg-secondary">Selecione seu banco abaixo:</p>
+            <button onClick={closeWidget} className="text-fg-muted hover:text-fg cursor-pointer transition-colors">
+              <X size={15} />
             </button>
           </div>
-          <div className="rounded-2xl overflow-hidden border border-slate-200" style={{ minHeight: 580 }}>
+          <div className="rounded-card overflow-hidden ring-1 ring-border" style={{ minHeight: 580 }}>
             <PluggyConnect
               connectToken={widgetToken}
               includeSandbox={false}
@@ -436,9 +436,9 @@ export default function OpenFinance() {
       )}
 
       {bankConnections.length === 0 && !widgetToken ? (
-        <div className="text-center py-20 text-slate-400">
-          <p className="text-5xl mb-4">🏦</p>
-          <p className="text-sm font-medium text-slate-600">Nenhum banco conectado</p>
+        <div className="text-center py-20 text-fg-muted">
+          <p className="text-4xl mb-3">🏦</p>
+          <p className="text-sm font-medium text-fg-secondary">Nenhum banco conectado</p>
           <p className="text-xs mt-1 mb-5">Conecte suas contas bancárias para sincronizar saldo e transações automaticamente via Open Finance.</p>
           <Button onClick={() => openWidget()} disabled={connecting || !!widgetToken}>
             {connecting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}

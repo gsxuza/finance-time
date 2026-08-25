@@ -2,23 +2,27 @@ import { cn } from '@/lib/utils'
 
 export function Button({ className, variant = 'default', size = 'md', children, ...props }) {
   const variants = {
-    default: 'bg-gradient-to-r from-blue-500 to-violet-500 text-white hover:from-blue-600 hover:to-violet-600 shadow-sm',
-    outline: 'border border-slate-200 text-slate-700 hover:bg-slate-50',
-    ghost: 'text-slate-600 hover:bg-slate-100',
-    danger: 'bg-red-500 text-white hover:bg-red-600',
-    success: 'bg-emerald-500 text-white hover:bg-emerald-600',
-    secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+    default: 'bg-fg text-bg font-semibold hover:bg-fg/90 active:bg-fg/80',
+    outline: 'ring-border text-fg-secondary hover:bg-bg-elevated hover:text-fg hover:ring-border-strong',
+    ghost: 'text-fg-secondary hover:bg-bg-hover hover:text-fg',
+    danger: 'bg-danger/10 text-danger hover:bg-danger/20 ring-1 ring-danger/20',
+    success: 'bg-success/10 text-success hover:bg-success/20 ring-1 ring-success/20',
+    secondary: 'bg-bg-elevated text-fg-secondary hover:bg-bg-hover hover:text-fg',
+    subtle: 'bg-bg-hover text-fg-secondary hover:bg-border-strong hover:text-fg',
   }
   const sizes = {
+    xs: 'px-2.5 py-1 text-xs',
     sm: 'px-3 py-1.5 text-sm',
     md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base',
+    lg: 'px-5 py-2.5 text-sm',
     icon: 'p-2',
+    'icon-sm': 'p-1.5',
   }
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer',
+        'inline-flex items-center justify-center gap-2 rounded-btn font-medium transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none',
+        variant === 'outline' && 'ring-1',
         variants[variant],
         sizes[size],
         className

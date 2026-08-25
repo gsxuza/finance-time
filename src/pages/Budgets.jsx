@@ -59,15 +59,15 @@ export default function Budgets() {
   }, [budgets, getBudgetSpent])
 
   const getBarColor = (pct) => {
-    if (pct >= 100) return 'bg-red-500'
-    if (pct >= 80) return 'bg-amber-400'
-    return 'bg-emerald-500'
+    if (pct >= 100) return 'bg-danger'
+    if (pct >= 80) return 'bg-warning'
+    return 'bg-success'
   }
 
   const getStatusColor = (pct) => {
-    if (pct >= 100) return 'text-red-600 bg-red-50'
-    if (pct >= 80) return 'text-amber-600 bg-amber-50'
-    return 'text-emerald-600 bg-emerald-50'
+    if (pct >= 100) return 'text-danger bg-danger-muted ring-1 ring-danger/20'
+    if (pct >= 80) return 'text-warning bg-warning-muted ring-1 ring-warning/20'
+    return 'text-success bg-success-muted ring-1 ring-success/20'
   }
 
   const PERIOD_LABELS = { weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' }
@@ -75,14 +75,14 @@ export default function Budgets() {
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-slate-900">Orçamentos</h1>
+        <h1 className="text-lg font-semibold text-fg">Orçamentos</h1>
         <Button onClick={() => setModal('new')} size="sm"><Plus size={16} /> Novo</Button>
       </div>
 
       {budgetsWithSpent.length === 0 ? (
-        <div className="text-center py-20 text-slate-400">
+        <div className="text-center py-20 text-fg-muted">
           <p className="text-4xl mb-3">🎯</p>
-          <p className="text-sm font-medium">Nenhum orçamento criado</p>
+          <p className="text-sm font-medium text-fg-secondary">Nenhum orçamento criado</p>
           <p className="text-xs mt-1">Crie orçamentos por categoria para controlar seus gastos</p>
           <Button onClick={() => setModal('new')} className="mt-4"><Plus size={16} /> Criar orçamento</Button>
         </div>
@@ -96,40 +96,40 @@ export default function Budgets() {
                 <CardContent className="pt-5">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl">{cat?.icon || '📦'}</span>
+                      <span className="text-xl">{cat?.icon || '📦'}</span>
                       <div>
-                        <p className="font-semibold text-slate-800 text-sm">{b.category}</p>
-                        <p className="text-xs text-slate-400">{PERIOD_LABELS[b.period]}</p>
+                        <p className="font-medium text-fg text-sm">{b.category}</p>
+                        <p className="text-2xs text-fg-muted">{PERIOD_LABELS[b.period]}</p>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 items-center">
                       {b.pct >= b.alert_threshold && (
-                        <span title="Atenção: limite próximo" className="text-amber-500"><AlertTriangle size={14} /></span>
+                        <span title="Atenção: limite próximo" className="text-warning"><AlertTriangle size={13} /></span>
                       )}
-                      <button onClick={() => setModal(b)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer"><Edit2 size={14} /></button>
-                      <button onClick={() => deleteBudget(b.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 cursor-pointer"><Trash2 size={14} /></button>
+                      <button onClick={() => setModal(b)} className="p-1.5 rounded-btn hover:bg-bg-hover text-fg-muted hover:text-fg cursor-pointer transition-colors"><Edit2 size={13} /></button>
+                      <button onClick={() => deleteBudget(b.id)} className="p-1.5 rounded-btn hover:bg-danger-muted text-fg-muted hover:text-danger cursor-pointer transition-colors"><Trash2 size={13} /></button>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                  <div className="flex items-center justify-between text-2xs text-fg-muted mb-1.5">
                     <span>{formatCurrency(b.spent)} gasto</span>
-                    <span className={`px-2 py-0.5 rounded-full font-semibold ${getStatusColor(b.pct)}`}>{b.pct.toFixed(0)}%</span>
+                    <span className={`px-2 py-0.5 rounded-badge font-medium ${getStatusColor(b.pct)}`}>{b.pct.toFixed(0)}%</span>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                  <div className="h-1 bg-bg-elevated rounded-full overflow-hidden mb-2">
                     <div className={`h-full rounded-full transition-all duration-500 ${getBarColor(b.pct)}`} style={{ width: `${Math.min(100, b.pct)}%` }} />
                   </div>
-                  <div className="flex justify-between text-xs">
-                    <span className={remaining >= 0 ? 'text-slate-500' : 'text-red-500 font-medium'}>
+                  <div className="flex justify-between text-2xs">
+                    <span className={remaining >= 0 ? 'text-fg-muted' : 'text-danger font-medium'}>
                       {remaining >= 0 ? `Restam ${formatCurrency(remaining)}` : `${formatCurrency(Math.abs(remaining))} acima do limite!`}
                     </span>
-                    <span className="text-slate-400">Limite: {formatCurrency(b.amount)}</span>
+                    <span className="text-fg-muted">Limite: {formatCurrency(b.amount)}</span>
                   </div>
                 </CardContent>
               </Card>
             )
           })}
 
-          <button onClick={() => setModal('new')} className="border-2 border-dashed border-slate-200 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-blue-500 hover:border-blue-200 hover:bg-blue-50/50 transition-all cursor-pointer min-h-[160px]">
+          <button onClick={() => setModal('new')} className="border border-dashed border-border rounded-card p-5 flex flex-col items-center justify-center gap-2 text-fg-muted hover:text-fg hover:border-border-strong hover:bg-bg-elevated transition-all cursor-pointer min-h-[160px]">
             <Plus size={24} />
             <span className="text-sm font-medium">Novo orçamento</span>
           </button>
