@@ -7,6 +7,7 @@ import Dashboard from '@/pages/Dashboard'
 import Transactions from '@/pages/Transactions'
 import Accounts from '@/pages/Accounts'
 import Budgets from '@/pages/Budgets'
+import Goals from '@/pages/Goals'
 import OpenFinance from '@/pages/OpenFinance'
 import AIInsights from '@/pages/AIInsights'
 import Reports from '@/pages/Reports'
@@ -26,8 +27,8 @@ function AuthGate({ children }) {
 
   if (status === 'checking') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <div className="w-8 h-8 border-2 border-border border-t-fg-secondary rounded-full animate-spin" />
       </div>
     )
   }
@@ -55,6 +56,7 @@ export default function App() {
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/budgets" element={<Budgets />} />
+            <Route path="/goals" element={<Goals />} />
             <Route path="/open-finance" element={<OpenFinance />} />
             <Route path="/ai-insights" element={<AIInsights />} />
             <Route path="/reports" element={<Reports />} />

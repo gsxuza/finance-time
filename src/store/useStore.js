@@ -6,6 +6,7 @@ const initialState = {
   accounts: [],
   transactions: [],
   budgets: [],
+  goals: [],
   categories: DEFAULT_CATEGORIES,
   bankConnections: [],
   settings: {
@@ -44,6 +45,11 @@ export const useStore = create(
       addBudget: (data) => set((s) => ({ budgets: [...s.budgets, { id: generateId(), ...data }] })),
       updateBudget: (id, data) => set((s) => ({ budgets: s.budgets.map((b) => (b.id === id ? { ...b, ...data } : b)) })),
       deleteBudget: (id) => set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) })),
+
+      // Goals
+      addGoal: (data) => set((s) => ({ goals: [...s.goals, { id: generateId(), created_at: new Date().toISOString(), ...data }] })),
+      updateGoal: (id, data) => set((s) => ({ goals: s.goals.map((g) => (g.id === id ? { ...g, ...data } : g)) })),
+      deleteGoal: (id) => set((s) => ({ goals: s.goals.filter((g) => g.id !== id) })),
 
       // Bank Connections
       addBankConnection: (data) => set((s) => ({ bankConnections: [...s.bankConnections, { id: generateId(), status: 'connected', auto_sync: true, last_sync: new Date().toISOString(), ...data }] })),

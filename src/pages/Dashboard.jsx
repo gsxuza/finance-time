@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { format, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Sparkles, Plus, ArrowRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Sparkles, Plus, ArrowRight, Target } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, formatDateShort, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -39,7 +39,7 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { transactions, accounts, getTotalBalance, getMonthlyIncome, getMonthlyExpenses } = useStore()
+  const { transactions, accounts, goals, getTotalBalance, getMonthlyIncome, getMonthlyExpenses } = useStore()
 
   const totalBalance = getTotalBalance()
   const monthlyIncome = getMonthlyIncome()
@@ -247,6 +247,42 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Goals widget */}
+          {goals && goals.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Target size={13} className="text-fg-secondary" />
+                    <CardTitle>Metas</CardTitle>
+                  </div>
+                  <button onClick={() => navigate('/goals')} className="text-2xs text-fg-muted hover:text-fg transition-colors cursor-pointer flex items-center gap-1">
+                    Ver todas <ArrowRight size={10} />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0 flex flex-col gap-3">
+                {goals.slice(0, 3).map((g) => {
+                  const pct = g.target_amount > 0 ? Math.min(100, (g.current_amount / g.target_amount) * 100) : 0
+                  return (
+                    <div key={g.id}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm">{g.icon}</span>
+                          <span className="text-xs text-fg-secondary truncate max-w-[120px]">{g.name}</span>
+                        </div>
+                        <span className="text-2xs text-fg-muted tabular-nums">{pct.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-1 bg-bg-elevated rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: g.color || '#4ade80' }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
 
           {/* AI Insight */}
           <div className="flex flex-col gap-3">
