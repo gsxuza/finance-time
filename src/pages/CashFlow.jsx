@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContai
 import { CalendarRange, Plus, Sparkles, Edit2, Trash2, AlertTriangle, X, CheckCircle2 } from 'lucide-react'
 import { format, addMonths, startOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useHideValues } from '@/hooks/useHideValues'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -117,13 +118,15 @@ function ProjectionTooltip({ active, payload, label }) {
   return (
     <div className="bg-bg-overlay ring-1 ring-border rounded-card px-3 py-2 text-xs shadow-lg">
       <p className="text-fg-secondary mb-1">{label}</p>
-      <span className={cn('font-semibold tabular-nums', v >= 0 ? 'text-success' : 'text-danger')}>{formatCurrency(v)}</span>
+      <span className={cn('font-semibold tabular-nums', v >= 0 ? 'text-success' : 'text-danger')}>{fmt(v)}</span>
     </div>
   )
 }
 
 export default function CashFlow() {
   const { transactions, recurringItems = [], addRecurringItem, updateRecurringItem, deleteRecurringItem } = useStore()
+  const valuesHidden = useHideValues()
+  const fmt = (v) => valuesHidden ? '•••••' : formatCurrency(v)
   const [showForm, setShowForm] = useState(false)
   const [editItem, setEditItem] = useState(null)
 
@@ -195,7 +198,7 @@ export default function CashFlow() {
                     <span className="text-sm">{cat?.icon || '📦'}</span>
                     <div>
                       <p className="text-xs font-medium text-fg">{c.category}</p>
-                      <p className="text-2xs text-fg-muted">{c.type === 'income' ? 'Receita' : 'Despesa'} · {formatCurrency(c.amount)}/mês</p>
+                      <p className="text-2xs text-fg-muted">{c.type === 'income' ? 'Receita' : 'Despesa'} · {fmt(c.amount)}/mês</p>
                     </div>
                   </div>
                   <button
@@ -246,7 +249,7 @@ export default function CashFlow() {
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-bg-surface rounded-card ring-1 ring-border p-4">
                 <p className="text-2xs text-fg-muted mb-1">{label}</p>
-                <p className={cn('text-base font-bold tabular-nums', color)}>{formatCurrency(value)}</p>
+                <p className={cn('text-base font-bold tabular-nums', color)}>{fmt(value)}</p>
               </div>
             ))}
           </div>
@@ -308,7 +311,7 @@ export default function CashFlow() {
                           <p className="text-2xs text-fg-muted">{item.category}</p>
                         </div>
                         <p className={cn('text-xs font-semibold tabular-nums shrink-0', type === 'income' ? 'text-success' : 'text-danger')}>
-                          {formatCurrency(item.amount)}
+                          {fmt(item.amount)}
                         </p>
                         <div className="flex items-center gap-1 shrink-0">
                           <button onClick={() => setEditItem(item)} className="p-1 text-fg-muted hover:text-fg cursor-pointer"><Edit2 size={12} /></button>

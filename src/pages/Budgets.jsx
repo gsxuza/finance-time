@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react'
+import { useHideValues } from '@/hooks/useHideValues'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -48,6 +49,8 @@ function BudgetForm({ onClose, initial }) {
 
 export default function Budgets() {
   const { budgets, getBudgetSpent, deleteBudget } = useStore()
+  const valuesHidden = useHideValues()
+  const fmt = (v) => valuesHidden ? '•••••' : formatCurrency(v)
   const [modal, setModal] = useState(null)
 
   const budgetsWithSpent = useMemo(() => {
@@ -112,7 +115,7 @@ export default function Budgets() {
                   </div>
 
                   <div className="flex items-center justify-between text-2xs text-fg-muted mb-1.5">
-                    <span>{formatCurrency(b.spent)} gasto</span>
+                    <span>{fmt(b.spent)} gasto</span>
                     <span className={`px-2 py-0.5 rounded-badge font-medium ${getStatusColor(b.pct)}`}>{b.pct.toFixed(0)}%</span>
                   </div>
                   <div className="h-1 bg-bg-elevated rounded-full overflow-hidden mb-2">
@@ -120,9 +123,9 @@ export default function Budgets() {
                   </div>
                   <div className="flex justify-between text-2xs">
                     <span className={remaining >= 0 ? 'text-fg-muted' : 'text-danger font-medium'}>
-                      {remaining >= 0 ? `Restam ${formatCurrency(remaining)}` : `${formatCurrency(Math.abs(remaining))} acima do limite!`}
+                      {remaining >= 0 ? `Restam ${fmt(remaining)}` : `${fmt(Math.abs(remaining))} acima do limite!`}
                     </span>
-                    <span className="text-fg-muted">Limite: {formatCurrency(b.amount)}</span>
+                    <span className="text-fg-muted">Limite: {fmt(b.amount)}</span>
                   </div>
                 </CardContent>
               </Card>

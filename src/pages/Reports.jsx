@@ -3,6 +3,7 @@ import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { FileDown, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
+import { useHideValues } from '@/hooks/useHideValues'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -12,6 +13,8 @@ const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#0
 
 export default function Reports() {
   const { transactions } = useStore()
+  const valuesHidden = useHideValues()
+  const fmt = (v) => valuesHidden ? '•••••' : formatCurrency(v)
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'))
 
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -71,21 +74,21 @@ export default function Reports() {
             <TrendingUp size={13} className="text-success" />
             <p className="text-2xs font-medium text-fg-muted">Receitas</p>
           </div>
-          <p className="text-xl font-bold text-success tabular-nums">{formatCurrency(selectedData.income)}</p>
+          <p className="text-xl font-bold text-success tabular-nums">{fmt(selectedData.income)}</p>
         </div>
         <div className="bg-bg-surface ring-1 ring-border rounded-card p-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingDown size={13} className="text-danger" />
             <p className="text-2xs font-medium text-fg-muted">Despesas</p>
           </div>
-          <p className="text-xl font-bold text-danger tabular-nums">{formatCurrency(selectedData.expenses)}</p>
+          <p className="text-xl font-bold text-danger tabular-nums">{fmt(selectedData.expenses)}</p>
         </div>
         <div className="bg-bg-surface ring-1 ring-border rounded-card p-4">
           <div className="flex items-center gap-2 mb-2">
             <DollarSign size={13} className={selectedData.balance >= 0 ? 'text-success' : 'text-danger'} />
             <p className="text-2xs font-medium text-fg-muted">Saldo</p>
           </div>
-          <p className={`text-xl font-bold tabular-nums ${selectedData.balance >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(selectedData.balance)}</p>
+          <p className={`text-xl font-bold tabular-nums ${selectedData.balance >= 0 ? 'text-success' : 'text-danger'}`}>{fmt(selectedData.balance)}</p>
         </div>
       </div>
 
@@ -97,7 +100,7 @@ export default function Reports() {
             <BarChart data={monthlyData} barGap={4}>
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#555555' }} axisLine={false} tickLine={false} />
               <YAxis hide />
-              <Tooltip formatter={(v) => formatCurrency(v)} contentStyle={{ borderRadius: 8, border: '1px solid #222', background: '#161616', fontSize: 12, color: '#f0f0f0' }} />
+              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ borderRadius: 8, border: '1px solid #222', background: '#161616', fontSize: 12, color: '#f0f0f0' }} />
               <Bar dataKey="Receitas" fill="#4ade80" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Despesas" fill="#f87171" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -116,7 +119,7 @@ export default function Reports() {
                   <Pie data={selectedData.byCategory} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
                     {selectedData.byCategory.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v) => formatCurrency(v)} />
+                  <Tooltip formatter={(v) => fmt(v)} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -142,13 +145,13 @@ export default function Reports() {
                       <span className="text-xs text-fg-muted mr-1">{cat?.icon}</span>
                       <span className="text-xs text-fg-secondary flex-1 truncate">{c.name}</span>
                       <span className="text-2xs text-fg-muted">{pct.toFixed(0)}%</span>
-                      <span className="text-xs font-semibold text-fg w-24 text-right tabular-nums">{formatCurrency(c.value)}</span>
+                      <span className="text-xs font-semibold text-fg w-24 text-right tabular-nums">{fmt(c.value)}</span>
                     </div>
                   )
                 })}
                 <div className="flex items-center justify-between pt-2.5">
                   <span className="text-xs font-medium text-fg-secondary">Total despesas</span>
-                  <span className="text-sm font-bold text-danger tabular-nums">{formatCurrency(selectedData.expenses)}</span>
+                  <span className="text-sm font-bold text-danger tabular-nums">{fmt(selectedData.expenses)}</span>
                 </div>
               </div>
             )}
@@ -176,7 +179,7 @@ export default function Reports() {
                       <p className="text-2xs text-fg-muted">{tx.category} · {tx.date}</p>
                     </div>
                     <span className={`text-xs font-bold tabular-nums ${tx.type === 'income' ? 'text-success' : 'text-danger'}`}>
-                      {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                      {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
                     </span>
                   </div>
                 )

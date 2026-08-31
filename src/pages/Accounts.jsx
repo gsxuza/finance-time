@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, Edit2, Trash2, Eye, EyeOff } from 'lucide-react'
+import { useHideValues } from '@/hooks/useHideValues'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -65,7 +66,7 @@ function AccountForm({ onClose, initial }) {
 export default function Accounts() {
   const { accounts, deleteAccount } = useStore()
   const [modal, setModal] = useState(null)
-  const [hideBalances, setHideBalances] = useState(false)
+  const hideBalances = useHideValues()
 
   const totalBalance = accounts.filter((a) => a.is_active && a.type !== 'credit_card').reduce((s, a) => s + a.balance, 0)
   const totalDebt = accounts.filter((a) => a.is_active && a.type === 'credit_card').reduce((s, a) => s + Math.abs(a.balance), 0)
@@ -75,9 +76,6 @@ export default function Accounts() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-lg font-semibold text-fg">Contas</h1>
         <div className="flex gap-2">
-          <button onClick={() => setHideBalances(!hideBalances)} className="p-2 rounded-btn bg-bg-elevated text-fg-muted hover:bg-bg-hover hover:text-fg cursor-pointer transition-colors">
-            {hideBalances ? <Eye size={16} /> : <EyeOff size={16} />}
-          </button>
           <Button onClick={() => setModal('new')} size="sm"><Plus size={16} /> Nova</Button>
         </div>
       </div>

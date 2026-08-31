@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { format, startOfWeek, startOfMonth, subMonths, isAfter } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Plus, Search, Trash2, Edit2, Sparkles } from 'lucide-react'
+import { useHideValues } from '@/hooks/useHideValues'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, formatDate, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -130,6 +131,8 @@ function TransactionForm({ onClose, initial }) {
 
 export default function Transactions() {
   const { transactions, deleteTransaction, categories } = useStore()
+  const valuesHidden = useHideValues()
+  const fmt = (v) => valuesHidden ? '•••••' : formatCurrency(v)
   const [modal, setModal] = useState(null) // null | 'new' | tx object
   const [search, setSearch] = useState('')
   const [period, setPeriod] = useState('this_month')
@@ -181,11 +184,11 @@ export default function Transactions() {
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-bg-surface ring-border ring-1 rounded-card p-4">
           <p className="text-xs text-fg-muted font-medium mb-1">Receitas</p>
-          <p className="text-lg font-bold text-success">{formatCurrency(totalIncome)}</p>
+          <p className="text-lg font-bold text-success">{fmt(totalIncome)}</p>
         </div>
         <div className="bg-bg-surface ring-border ring-1 rounded-card p-4">
           <p className="text-xs text-fg-muted font-medium mb-1">Despesas</p>
-          <p className="text-lg font-bold text-danger">{formatCurrency(totalExpense)}</p>
+          <p className="text-lg font-bold text-danger">{fmt(totalExpense)}</p>
         </div>
       </div>
 
@@ -225,7 +228,7 @@ export default function Transactions() {
                 <div className="flex items-center justify-between mb-2 px-1">
                   <span className="text-xs font-medium text-fg-muted">{formatDate(date)}</span>
                   <span className={`text-xs font-medium ${dayTotal >= 0 ? 'text-success' : 'text-danger'}`}>
-                    {dayTotal >= 0 ? '+' : ''}{formatCurrency(dayTotal)}
+                    {dayTotal >= 0 ? '+' : ''}{fmt(dayTotal)}
                   </span>
                 </div>
                 <Card>
@@ -247,7 +250,7 @@ export default function Transactions() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={`text-sm font-semibold tabular-nums ${tx.is_transfer ? 'text-fg-muted' : tx.type === 'income' ? 'text-success' : 'text-danger'}`}>
-                              {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount)}
+                              {tx.type === 'income' ? '+' : '−'}{fmt(tx.amount)}
                             </span>
                             <div className="hidden group-hover:flex gap-1">
                               <button onClick={() => setModal(tx)} className="p-1.5 rounded-btn hover:bg-bg-hover text-fg-muted hover:text-fg cursor-pointer transition-colors"><Edit2 size={13} /></button>

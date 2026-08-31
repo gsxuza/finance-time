@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Target, Plus, CheckCircle2, Trash2, PiggyBank, TrendingUp, Clock, X } from 'lucide-react'
+import { useHideValues } from '@/hooks/useHideValues'
 import { useStore } from '@/store/useStore'
 import { formatCurrency, generateId } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -142,7 +143,7 @@ function DepositModal({ goal, onClose }) {
           <span className="text-2xl">{goal.icon}</span>
           <div>
             <p className="text-sm font-semibold text-fg">{goal.name}</p>
-            <p className="text-xs text-fg-muted">{formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}</p>
+            <p className="text-xs text-fg-muted">{fmt(goal.current_amount)} / {fmt(goal.target_amount)}</p>
           </div>
         </div>
         <form onSubmit={handleDeposit} className="flex flex-col gap-3">
@@ -171,6 +172,8 @@ function DepositModal({ goal, onClose }) {
 
 function GoalCard({ goal, onDeposit }) {
   const deleteGoal = useStore((s) => s.deleteGoal)
+  const valuesHidden = useStore((s) => s.valuesHidden)
+  const fmt = (v) => valuesHidden ? '•••••' : formatCurrency(v)
   const pct = goal.target_amount > 0 ? Math.min(100, (goal.current_amount / goal.target_amount) * 100) : 0
   const done = pct >= 100
   const remaining = Math.max(0, goal.target_amount - goal.current_amount)
@@ -207,7 +210,7 @@ function GoalCard({ goal, onDeposit }) {
             {done && <CheckCircle2 size={14} className="text-success shrink-0" />}
           </div>
           <p className="text-xs text-fg-muted mt-0.5">
-            {formatCurrency(goal.current_amount)} <span className="text-fg-muted/50">/</span> {formatCurrency(goal.target_amount)}
+            {fmt(goal.current_amount)} <span className="text-fg-muted/50">/</span> {fmt(goal.target_amount)}
           </p>
         </div>
         <div className="text-right shrink-0">
@@ -241,7 +244,7 @@ function GoalCard({ goal, onDeposit }) {
           {monthlyNeeded && !done && (
             <div className="flex items-center gap-1">
               <TrendingUp size={11} className="text-fg-muted" />
-              <span className="text-2xs text-fg-muted">{formatCurrency(monthlyNeeded)}/mês</span>
+              <span className="text-2xs text-fg-muted">{fmt(monthlyNeeded)}/mês</span>
             </div>
           )}
         </div>
@@ -261,6 +264,8 @@ function GoalCard({ goal, onDeposit }) {
 
 export default function Goals() {
   const goals = useStore((s) => s.goals || [])
+  const valuesHidden = useHideValues()
+  const fmt = (v) => valuesHidden ? '•••••' : formatCurrency(v)
   const addGoal = useStore((s) => s.addGoal)
   const [showForm, setShowForm] = useState(false)
   const [depositGoal, setDepositGoal] = useState(null)
@@ -301,8 +306,8 @@ export default function Goals() {
       {goals.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-5">
           {[
-            { label: 'Total Poupado', value: formatCurrency(totalSaved), icon: PiggyBank },
-            { label: 'Total Alvo', value: formatCurrency(totalTarget), icon: Target },
+            { label: 'Total Poupado', value: fmt(totalSaved), icon: PiggyBank },
+            { label: 'Total Alvo', value: fmt(totalTarget), icon: Target },
             { label: 'Concluídas', value: `${completedCount} / ${goals.length}`, icon: CheckCircle2 },
           ].map(({ label, value, icon: Icon }) => (
             <div key={label} className="bg-bg-surface rounded-card ring-1 ring-border p-4">

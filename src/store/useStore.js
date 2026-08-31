@@ -9,6 +9,7 @@ const initialState = {
   goals: [],
   recurringItems: [],
   readNotificationIds: [],
+  valuesHidden: false,
   categories: DEFAULT_CATEGORIES,
   bankConnections: [],
   settings: {
@@ -47,6 +48,9 @@ export const useStore = create(
       addBudget: (data) => set((s) => ({ budgets: [...s.budgets, { id: generateId(), ...data }] })),
       updateBudget: (id, data) => set((s) => ({ budgets: s.budgets.map((b) => (b.id === id ? { ...b, ...data } : b)) })),
       deleteBudget: (id) => set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) })),
+
+      // UI toggles
+      toggleValuesHidden: () => set((s) => ({ valuesHidden: !s.valuesHidden })),
 
       // Notifications
       markNotificationsRead: (ids) => set((s) => ({

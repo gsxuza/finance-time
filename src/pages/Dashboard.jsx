@@ -6,6 +6,7 @@ import { format, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Sparkles, Plus, ArrowRight, Target, Activity } from 'lucide-react'
 import { useStore } from '@/store/useStore'
+import { useHideValues } from '@/hooks/useHideValues'
 import { formatCurrency, formatDateShort, countsAsFlow, DEFAULT_CATEGORIES } from '@/lib/utils'
 import { computeHealthScore } from '@/lib/healthScore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -22,7 +23,10 @@ const fadeUp = {
   animate: { opacity: 1, y: 0, transition: { ease: [0.16, 1, 0.3, 1], duration: 0.4 } },
 }
 
+const HIDDEN = '•••••'
+
 function CustomTooltip({ active, payload, label }) {
+  const hidden = useStore((s) => s.valuesHidden)
   if (!active || !payload?.length) return null
   return (
     <div className="bg-bg-overlay ring-1 ring-border rounded-card px-3 py-2 text-xs shadow-lg">
@@ -31,7 +35,7 @@ function CustomTooltip({ active, payload, label }) {
         <div key={p.name} className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: p.color }} />
           <span className="text-fg-secondary">{p.name}:</span>
-          <span className="text-fg font-medium">{formatCurrency(p.value)}</span>
+          <span className="text-fg font-medium">{hidden ? HIDDEN : formatCurrency(p.value)}</span>
         </div>
       ))}
     </div>
@@ -40,6 +44,8 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const valuesHidden = useHideValues()
+  const fmt = (v) => valuesHidden ? HIDDEN : formatCurrency(v)
   const { transactions, accounts, budgets, goals, recurringItems, getTotalBalance, getMonthlyIncome, getMonthlyExpenses } = useStore()
 
   const totalBalance = getTotalBalance()
@@ -92,7 +98,7 @@ export default function Dashboard() {
             <p className="text-xs font-medium text-fg-muted uppercase tracking-widest mb-3">Patrimônio Total</p>
             <div className="flex items-end gap-4 flex-wrap">
               <h1 className="text-4xl lg:text-5xl font-bold text-fg tracking-tight tabular-nums">
-                {formatCurrency(totalBalance)}
+                {fmt(totalBalance)}
               </h1>
               <span className="text-fg-muted text-sm pb-1.5">{totalAccounts} conta{totalAccounts !== 1 ? 's' : ''}</span>
             </div>
@@ -130,7 +136,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <p className={cn('text-2xl font-bold tabular-nums tracking-tight', type === 'income' ? 'text-success' : 'text-danger')}>
-                {formatCurrency(value)}
+                {fmt(value)}
               </p>
               {sub && <p className="text-2xs text-fg-muted mt-1">{sub}</p>}
             </div>
@@ -188,7 +194,7 @@ export default function Dashboard() {
                           <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
                           <span className="text-xs text-fg-secondary truncate">{d.name}</span>
                         </div>
-                        <span className="text-xs font-medium text-fg shrink-0">{formatCurrency(d.value)}</span>
+                        <span className="text-xs font-medium text-fg shrink-0">{fmt(d.value)}</span>
                       </div>
                     ))}
                   </div>
@@ -334,7 +340,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <span className={cn('text-sm font-semibold tabular-nums shrink-0', tx.type === 'income' ? 'text-success' : isTransfer ? 'text-fg-muted' : 'text-danger')}>
-                        {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount)}
+                        {tx.type === 'income' ? '+' : '−'}{fmt(tx.amount)}
                       </span>
                     </motion.div>
                   )
@@ -401,11 +407,11 @@ export default function Dashboard() {
                 <CardContent className="pt-0 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <p className="text-2xs text-fg-muted">Saldo projetado</p>
-                    <p className={`text-base font-bold tabular-nums ${projected3m >= 0 ? 'text-fg' : 'text-danger'}`}>{formatCurrency(projected3m)}</p>
+                    <p className={`text-base font-bold tabular-nums ${projected3m >= 0 ? 'text-fg' : 'text-danger'}`}>{fmt(projected3m)}</p>
                   </div>
                   <div className="flex items-center justify-between">
                     <p className="text-2xs text-fg-muted">Resultado/mês</p>
-                    <p className={`text-xs font-semibold tabular-nums ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net >= 0 ? '+' : ''}{formatCurrency(net)}</p>
+                    <p className={`text-xs font-semibold tabular-nums ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net >= 0 ? '+' : ''}{fmt(net)}</p>
                   </div>
                   {projected3m < 0 && (
                     <p className="text-2xs text-danger bg-danger-muted rounded-btn px-2 py-1 ring-1 ring-danger/20 text-center">
