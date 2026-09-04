@@ -3,3 +3,6 @@ dist/
 .env
 .env.local
 *.log
+
+# BMAD: pasta de saída gerada pelos agentes
+_bmad-output/
